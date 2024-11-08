@@ -44,9 +44,9 @@ Data analysis is described in detail in the [statistical methods](https://filip-
 
 # Introduction
 
-This project aim to explore a potential signature of vegan diet across microbiome, metabolom and lipidom. We used data of healthy vegan and omnivorous human subjects in two different countries (Czech and Italy) and different dietary habits (vegans and omnivores), forming 4 groups defined by the `Country` and `Diet`.
+This project explores potential signatures of a vegan diet across the microbiome, metabolome, and lipidome. We used data from healthy vegan and omnivorous human subjects in two countries (Czech Republic and Italy), with subjects grouped by `Country` and `Diet`, resulting in four distinct groups.
 
-To further explore whether the found signature can be generalizable to otehr dataset, we verified our findings also with an indepedent validation cohorts (Czech). 
+To assess the generalizability of these findings, we validated our results with an independent cohort from the Czech Republic for external validation.
 
 
 ## Statistical Methods
@@ -55,7 +55,7 @@ The statistical modeling approach is described in detail in [this report](https:
 
 - **Multivariate analysis**: We conducted multivariate analyses (PERMANOVA, PCA, correlation analyses) to explore the effects of `diet`, `country`, and their possible interaction (`diet : country`) on the microbiome, lipidome, and metabolome compositions in an integrative manner. This part of the analysis is not available on the GitHub page, but the code will be provided upon request.
 
-- **Linear models**: Linear models were used to estimate the effects of `diet`, `country`, and their interaction (`diet:country`) on individual lipids, metabolites, and bacterial taxa ("features"). Features that significantly differed between diet groups (based on the average effect of `diet` across both countries, as estimated from a single linear model with interaction, and adjusted for multiple comparisons with FDR < 0.1) were analyzed also in the independent (validation) cohort to assess whether the associations between omics features and diet are generalizable to new datasets.
+- **Linear models**: Linear models were applied to estimate the effects of `diet`, `country`, and their interaction (`diet:country`) on individual lipids, metabolites, and bacterial taxa ("features"). Features that significantly differed between diet groups (based on the estimated average effect of diet across both countries, adjusted for multiple comparisons with FDR < 0.1) were further examined in the independent validation cohort to assess whether these associations were reproducible.
 
 - **Predictive models (elastic net)**: We employed elastic net (regularized) logistic regression to predict vegan status based on microbiome, metabolome, and lipidome features (one predictive model per dataset, i.e., three elastic net models in total). These models were internally validated using out-of-bag bootstrap resampling. The discriminatory power of each model to differentiate between diet groups was evaluated using the out-of-sample (optimism-corrected) area under the receiver operating characteristic curve (ROC-AUC). The models trained on the training data were then used to estimate the predicted probability that a given subject is vegan in an indepedent validation cohort. This predicted probability was subsequently used as a variable to discriminate between diet groups for external validation.
 
