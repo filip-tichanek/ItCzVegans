@@ -34,11 +34,11 @@ BibTex citation for the original publication:
 
 ---------------------------------------------------------------------------------------------------
 
-Original [GitHub repository](https://github.com/filip-tichanek/CzItVegans): https://github.com/filip-tichanek/CzItVegans
+Original [GitHub repository](https://github.com/filip-tichanek/ItCzVegans): https://github.com/filip-tichanek/ItCzVegans
 
-Statistical **reports** can be found on the [reports hub](https://filip-tichanek.github.io/CzItVegans/).
+Statistical **reports** can be found on the [reports hub](https://filip-tichanek.github.io/ItCzVegans/).
 
-Data analysis is described in detail in the [statistical methods](https://filip-tichanek.github.io/CzItVegans/html_reports/478_code04_methods.html) report.
+Data analysis is described in detail in the [statistical methods](https://filip-tichanek.github.io/ItCzVegans/html_reports/478_code04_methods.html) report.
 
 ----------------------------------------------------------------------------------------------------
 
