@@ -1,7 +1,7 @@
 **Authors and affiliations**
 
 <div style="font-size: larger;">
-Monika Cahova<sup>1,\*</sup>, Anna Ouradova<sup>2,*</sup>, Giulio Ferrero<sup>3,4,*</sup>, Miriam Bratova<sup>1</sup>, Nikola Daskova<sup>1</sup>, Klara Dohnalova<sup>5</sup>, Marie Heczkova<sup>1</sup>, Karel Chalupsky<sup>5</sup>, Maria Kralova<sup>6,7</sup>, Marek Kuzma<sup>8</sup>, Filip Tichanek<sup>1</sup>, Lucie Najmanova<sup>8</sup>, Barbara Pardini<sup>10</sup>, Helena Pelantová<sup>8</sup>, Radislav Sedlacek<sup>5</sup>, Sonia Tarallo<sup>9</sup>, Petra Videnska<sup>10</sup>, Jan Gojda<sup>2,#</sup>, Alessio Naccarati<sup>9,#</sup>
+Monika Cahova<sup>1</sup>*, Anna Ouradova<sup>2,*</sup>, Giulio Ferrero<sup>3,4,*</sup>, Miriam Bratova<sup>1</sup>, Nikola Daskova<sup>1</sup>, Klara Dohnalova<sup>5</sup>, Marie Heczkova<sup>1</sup>, Karel Chalupsky<sup>5</sup>, Maria Kralova<sup>6,7</sup>, Marek Kuzma<sup>8</sup>, Filip Tichanek<sup>1</sup>, Lucie Najmanova<sup>8</sup>, Barbara Pardini<sup>10</sup>, Helena Pelantová<sup>8</sup>, Radislav Sedlacek<sup>5</sup>, Sonia Tarallo<sup>9</sup>, Petra Videnska<sup>10</sup>, Jan Gojda<sup>2,#</sup>, Alessio Naccarati<sup>9,#</sup>
 </div>
 
 <br>
@@ -58,6 +58,5 @@ The statistical modeling approach is described in detail in [this report](https:
 - **Linear models**: Linear models were applied to estimate the effects of `diet`, `country`, and their interaction (`diet:country`) on individual lipids, metabolites, and bacterial taxa ("features"). Features that significantly differed between diet groups (based on the estimated average effect of diet across both countries, adjusted for multiple comparisons with FDR < 0.1) were further examined in the independent validation cohort to assess whether these associations were reproducible.
 
 - **Predictive models (elastic net)**: We employed elastic net (regularized) logistic regression to predict vegan status based on microbiome, metabolome, and lipidome features (one predictive model per dataset, i.e., three elastic net models in total). These models were internally validated using out-of-bag bootstrap resampling. The discriminatory power of each model to differentiate between diet groups was evaluated using the out-of-sample (optimism-corrected) area under the receiver operating characteristic curve (ROC-AUC). The models trained on the training data were then used to estimate the predicted probability that a given subject is vegan in an indepedent validation cohort. This predicted probability was subsequently used as a variable to discriminate between diet groups for external validation.
-
 
 
