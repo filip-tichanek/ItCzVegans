@@ -1,0 +1,911 @@
+---
+title: "Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations"
+subtitle: "Statistical report for metabolom analysis"
+format: 
+  html:  
+    embed-resources: true
+    keep-md: false
+    toc: true
+    toc-expand: 3
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    number-depth: 4
+    code-fold: show
+    code-tools: true
+    code-summary: "Open code"
+    grid: 
+      body-width: 1000px
+      sidebar-width: 600px
+      margin-width: 100px
+editor: source
+project:
+  type: default
+  output-dir: output
+theme: darkly
+highlight-style: github-dark
+fontsize: 12 px
+code-block-bg: "#2D2D31"
+bibliography: references.bib
+fontcolor: "#D1D1D1"
+monobackgroundcolor: "#3B3B3B"
+---
+
+------------------------------------------------------------------------
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+```{css, echo=FALSE}
+code.sourceCode {
+  font-size: 0.86em;
+  border: 1px solid #ffffff; 
+  padding: 9px; 
+}
+
+code{
+    color: #EEE8AA; 
+    background: #96464D
+}
+
+.equation {
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+body {
+  text-align: justify;
+}
+```
+
+
+{{< include README.md >}}
+
+
+# Initiation
+
+## Set home directory
+
+```{r}
+setwd('/home/ticf/GitRepo/ticf/478_MOCA_italian')
+```
+
+## Upload initiation file
+
+```{r}
+source('478_initiation.R')
+```
+
+# Data
+
+## Upload all original data
+
+### Training set
+
+```{r}
+data_metabolites_original <- read.xlsx('gitignore/data/serum_metabolome_training_cohort.xlsx')
+```
+
+### Validation set
+
+```{r}
+data_metabolites_validation <- read.xlsx('gitignore/data/Serum_metabolome_Validation_cohort_new.xlsx') %>% 
+  select(-X38)
+```
+
+
+### Merge training and validation dataset
+
+```{r}
+tr1 <- data_metabolites_original %>% 
+  mutate(Data = if_else(Country == 'CZ', 'CZ_tr', 'IT_tr')) %>% 
+  select(Data, Diet, `formate`:`2-hydroxybutyrate`)
+
+tr2 <- data_metabolites_validation %>% 
+  mutate(Data = 'valid',
+         Diet = if_else(SKUPINA == 0 , 'OMNI', 'VEGAN')) %>% 
+  select(Data, Diet, `formate`:`2-hydroxybutyrate`)
+
+data_merged <- bind_rows(tr1, tr2)
+```
+
+
+## Explore
+
+### Data summary`
+
+```{r}
+summary(data_metabolites_original)
+```
+
+#### Distributions - raw data
+
+The following plot will show distribution of 36 randomly selected metabolites
+
+```{r, fig.height=12, fig.width=9}
+check <- data_metabolites_original %>% 
+  dplyr::select(
+    `formate`: `2-hydroxybutyrate`
+    ) %>% 
+  na.omit()
+
+
+size = c(6,6)
+par(mfrow = c(size[1],size[2]))
+par(mar=c(2,1.5,2,0.5))
+set.seed(16)
+
+for(x in 1:ncol(check)){
+  hist(check[,x], 
+       16, 
+       col='blue', 
+       main = paste0(colnames(check)[x])
+  )
+}
+  
+```
+
+Data seems to be highly right-tailed
+
+
+#### Distribution - Log2 transformed
+
+```{r, fig.height=12, fig.width=9}
+
+par(mfrow = c(size[1],size[2]))
+par(mar=c(2,1.5,2,0.5))
+set.seed(16)
+
+for(x in 1:ncol(check)){
+  hist(log2(check[,x]+1e-8), 
+       16, 
+       col='blue', 
+       main = paste0('log2',colnames(check)[x])
+  )
+}
+
+```
+
+Seems more symmetrical and Gaussian
+
+#### Comparison training vs validation cohort
+
+```{r, fig.height=12, fig.width=9, warning=FALSE}
+tr1 <- data_metabolites_original %>% 
+  select(formate:`2-hydroxybutyrate`) %>% 
+  mutate(dataset = 'training')
+  
+tr2 <- data_metabolites_validation %>% select(formate:`2-hydroxybutyrate`) %>% 
+  mutate(dataset = 'validation')
+
+tr <- bind_rows(tr1, tr2)
+
+size = c(6,6)
+par(mfrow = c(size[1],size[2]))
+par(mar = c(2,1.5,2,0.5))
+par(mgp = c(3, 0.5, 0 ))
+
+for(x in 1:(ncol(tr)-1)){
+  plot(log2(tr[, x]) ~ factor(tr$dataset),
+       main = paste0(colnames(check)[x]),
+       ylim = c(-24, -10)
+  )
+}
+
+
+```
+
+#### Metabolites accross groups
+
+```{r, fig.height=12, fig.width=12, warning=FALSE}
+#| fig.cap: "Levels of metabolites across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
+
+colo <- c('#329243', '#F9FFAF')
+
+outcomes <- data.frame(
+  variable = data_merged %>% 
+    select(formate:`2-hydroxybutyrate`) %>% 
+    colnames())
+
+boxplot_cond <- function(variable) {
+  
+  
+  p <- ggboxplot(data_merged, 
+                 x = 'Diet', 
+                 y = variable, 
+                 fill = 'Diet', 
+                 tip.length = 0.15,
+                 palette = colo,
+                 outlier.shape = 1,
+                 lwd = 0.25,
+                 outlier.size = 0.8,
+                 facet.by = 'Data',
+                 title = variable,
+                 ylab = 'Metabolite level') +
+    
+    theme(
+      plot.title = element_text(size = 10), 
+      axis.title = element_text(size = 8),  
+      axis.text.y = element_text(size = 7),
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank()
+    ) 
+    
+  
+  return(p)
+}
+
+# Plot all outcomes
+plots <- map(outcomes$variable, boxplot_cond)
+
+# Create a matrix of plots
+plots_arranged <- ggarrange(plotlist = plots, ncol = 5, nrow = 7,  common.legend = TRUE)
+plots_arranged
+```
+
+# Linear models across metabolites
+
+We will fit a feature-specific linear model where the log2-transformed metabolite represents the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represent fixed-effects predictors. So, each model has following form
+
+$$
+log_{2}(\text{metabolite level}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet} + \beta_{3} \times \text{country:diet} + \epsilon
+$$
+
+The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.   
+This parameterization allows us to interpret the linear model `summary` output as presenting the conditional effects of `diet` averaged across both countries and the conditional effects of `country` averaged across both diet groups. We will then use the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
+
+Metabolites that will show a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR < 0.1) will be then visualized using a forest plot, with country-specific diet effect along with diet effect based on independent validation cohort, to evaluate how generalizable are these findings. 
+
+## Define transformation function for each dataset
+
+Given the distribution of the estimated metabolites concentrations, we will use log2-transformed values
+
+```{r}
+trans_metabolite <- function(x){
+  log2(x + 1e-8)
+}
+```
+
+
+## Select and wrangle data 
+
+```{r}
+data_analysis_metabolom <- data_metabolites_original %>%
+  na.omit() %>%
+  dplyr::mutate(
+    Diet_VEGAN = as.numeric(
+      dplyr::if_else(
+        Diet == "VEGAN", 0.5, -0.5
+      )
+    ),
+    Country_IT = as.numeric(
+      dplyr::if_else(
+        Country == "IT", 0.5, -0.5
+      )
+    ),
+    dplyr::across(
+      `formate`: `2-hydroxybutyrate`, ~ trans_metabolite(.)
+    )
+  ) %>%
+  dplyr::select(
+    Sample,
+    Country,
+    Country_IT,
+    Diet,
+    Diet_VEGAN,
+    Group,
+    dplyr::everything()
+  )
+
+summary(data_analysis_metabolom[ , 1:12])
+```
+
+### Define number of metabolites and covariates
+
+```{r}
+n_covarites <- 6
+n_features <- ncol(data_analysis_metabolom) - n_covarites
+```
+
+### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+log2FD_VGdiet_inCZ <- vector('double', n_features)
+log2FD_VGdiet_inIT <- vector('double', n_features)
+log2FD_VGdiet_avg <- vector('double', n_features)
+
+log2FD_ITcountry_avg <- vector('double', n_features)
+diet_country_int <- vector('double', n_features)
+
+
+P_VGdiet_inCZ <- vector('double', n_features)
+P_VGdiet_inIT <- vector('double', n_features)
+P_VGdiet_avg <- vector('double', n_features)
+
+P_ITcountry_avg <- vector('double', n_features)
+P_diet_country_int <- vector('double', n_features)
+
+CI_L_VGdiet_inCZ <- vector('double', n_features)
+CI_L_VGdiet_inIT <- vector('double', n_features)
+CI_L_VGdiet_avg <- vector('double', n_features)
+
+CI_U_VGdiet_inCZ <- vector('double', n_features)
+CI_U_VGdiet_inIT <- vector('double', n_features)
+CI_U_VGdiet_avg <- vector('double', n_features)
+```
+
+## Run linear models over metabolites
+
+```{r}
+for (i in 1:n_features) {
+  
+  ## define variable
+  data_analysis_metabolom$outcome <- data_analysis_metabolom[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Country_IT * Diet_VEGAN, data = data_analysis_metabolom)
+
+  ## get contrast (effects of diet BY COUNTRY)
+  contrast_emm <- summary(
+    pairs(
+      emmeans(
+        model,
+        specs = ~ Diet_VEGAN | Country_IT
+        ),
+      interaction = TRUE,
+      adjust = "none"
+      ),
+    infer = c(TRUE, TRUE)
+    )
+
+  ## save results
+  outcome[i] <- names(data_analysis_metabolom)[i + n_covarites]
+  
+  ## country effect
+  log2FD_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 1
+  ]
+
+  P_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 4
+  ]
+  
+  
+  ## diet effect
+  tr <- confint(model)
+  
+  CI_L_VGdiet_avg[i] <- tr[which(row.names(tr) == 'Diet_VEGAN'),][1]
+  CI_U_VGdiet_avg[i] <- tr[which(row.names(tr) == 'Diet_VEGAN'),][2]
+  
+  log2FD_VGdiet_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 1
+  ]
+
+  P_VGdiet_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 4
+  ]
+  
+  log2FD_VGdiet_inCZ[i] <- -contrast_emm$estimate[1]
+  P_VGdiet_inCZ[i] <- contrast_emm$p.value[1]
+  CI_L_VGdiet_inCZ[i] <- -contrast_emm$upper.CL[1]
+  CI_U_VGdiet_inCZ[i] <- -contrast_emm$lower.CL[1]
+  
+  
+  log2FD_VGdiet_inIT[i] <- -contrast_emm$estimate[2]
+  P_VGdiet_inIT[i] <- contrast_emm$p.value[2]
+  CI_L_VGdiet_inIT[i] <- -contrast_emm$upper.CL[2]
+  CI_U_VGdiet_inIT[i] <- -contrast_emm$lower.CL[2]
+  
+  
+  ## interaction
+  diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_VEGAN"
+    ), 1
+  ]
+
+  P_diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_VEGAN"
+    ), 4
+  ]
+}
+
+```
+
+
+## Results table
+
+```{r}
+result_metabolom <- data.frame(
+  outcome,
+  log2FD_ITcountry_avg, P_ITcountry_avg,
+  log2FD_VGdiet_avg, P_VGdiet_avg,
+  log2FD_VGdiet_inCZ, P_VGdiet_inCZ,
+  log2FD_VGdiet_inIT, P_VGdiet_inIT,
+  diet_country_int, P_diet_country_int,
+  CI_L_VGdiet_avg, CI_U_VGdiet_avg,
+  CI_L_VGdiet_inCZ, CI_U_VGdiet_inCZ,
+  CI_L_VGdiet_inIT, CI_U_VGdiet_inIT
+)
+```
+
+### Adjust p values
+
+```{r}
+result_metabolom <- result_metabolom %>% 
+  dplyr::mutate(
+    fdr_ITcountry_avg = p.adjust(P_ITcountry_avg, method = 'BH'),
+    fdr_VGdiet_avg = p.adjust(P_VGdiet_avg, method = 'BH'),
+    
+    fdr_VGdiet_inCZ = p.adjust(P_VGdiet_inCZ, method = 'BH'),
+    fdr_VGdiet_inIT = p.adjust(P_VGdiet_inIT, method = 'BH'),
+    fdr_diet_country_int = p.adjust(P_diet_country_int, method = 'BH')
+  ) %>% 
+  dplyr::select(
+    outcome,
+    log2FD_ITcountry_avg, P_ITcountry_avg, fdr_ITcountry_avg,
+    log2FD_VGdiet_avg, P_VGdiet_avg, fdr_VGdiet_avg,
+    log2FD_VGdiet_inCZ, P_VGdiet_inCZ, fdr_VGdiet_inCZ,
+    log2FD_VGdiet_inIT, P_VGdiet_inIT, fdr_VGdiet_inIT,
+    diet_country_int, P_diet_country_int, fdr_diet_country_int,
+    CI_L_VGdiet_avg, CI_U_VGdiet_avg,
+    CI_L_VGdiet_inCZ, CI_U_VGdiet_inCZ,
+    CI_L_VGdiet_inIT, CI_U_VGdiet_inIT
+  )
+```
+
+### Result: show and save
+
+```{r}
+kableExtra::kable(result_metabolom,
+                  caption = "Result of linear models, modelling the level of given metabolite with `Diet`, `Country` and `Diet:Country` interaction as predictors. `log2FD` prefix: implies estimated effects (regression coefficient), i.e. how much log2-transformed metabolite level differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+                  ) 
+
+if(file.exists('gitignore/result_metabolom.csv') == FALSE){
+  write.table(result_metabolom, 
+              'gitignore/result_metabolom.csv', 
+              row.names = FALSE)
+  }
+```
+
+# Elastic net
+
+To assess the predictive power of metabolome features on diet strategy, we employed Elastic Net logistic regression. 
+
+As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to by 2 standard deviations.
+
+The performance of the predictive models was evaluated through their capacity of discriminate between vegan and omnivore diets, using out-of-sample area under ROC curve (AUC; estimated with out-of-bag bootstrap) as the measure of discriminatory capacity.
+
+All features were transformed by 2 standard deviations (resulting in standard deviation of 0.5)
+
+
+## Prepare data for `glmnet`
+
+
+```{r}
+data_metabolites_glmnet <- data_metabolites_original %>%
+  dplyr::mutate(
+    vegan = as.numeric(
+      dplyr::if_else(
+        Diet == "VEGAN", 1, 0
+      )
+    ),
+    dplyr::across(
+      `formate`:`2-hydroxybutyrate`, ~ arm::rescale(trans_metabolite(.))
+    )
+  ) %>% 
+  dplyr::select(
+    Sample, vegan, `formate`:`2-hydroxybutyrate`
+  )
+
+dim(data_metabolites_glmnet)
+names(data_metabolites_glmnet)
+summary(data_metabolites_glmnet)
+```
+
+## Fit model
+
+```{r}
+
+modelac <- "elanet_metabolit_all"
+
+assign(
+  modelac,
+  run(
+    expr = clust_glmnet(
+      data = data_metabolites_glmnet,
+      outcome = "vegan",
+      clust_id = "Sample",
+      sample_method = "oos_boot",
+      N = 500,
+      alphas = c(0, 0.2, 0.4),
+      family = "binomial",
+      seed = 478
+    ),
+    path = paste0("gitignore/run/", modelac)
+  )
+)
+```
+
+## See results
+
+### Model summary
+
+```{r}
+elanet_metabolit_all$model_summary
+```
+
+### Calibration plot
+
+```{r}
+#| fig.cap: "Calibration plot, showing outcomes value (y-axis) according to prediction of elastic net model (x-axis). Grey curves show predictions from different bootstrap iterations. Red lines and shadows show average prediction across all iterations and its 95% confidence"
+
+elanet_metabolit_all$plot
+```
+
+### Estimated coefficients
+
+```{r}
+elanet_metabolit_all$betas
+```
+
+### Plot of coefficients
+
+```{r}
+#| fig.cap: "Regression coefficients from the elastic net model predicting vegan diet strategy based on log2-transformed and standardized metabolite levels. Metabolites are ordered by the magnitude of the standardized coefficients, indicating their relative importance in distinguishing between the diet groups. The sign of each coefficient indicates the direction of association with vegan diet status, with positive values indicating a higher probability of vegan status and vice versa. Metabolites whose effects were shrunk to zero are not shown."
+
+data.frame(
+  metabolite = row.names(elanet_metabolit_all$betas),
+  beta = elanet_metabolit_all$betas[, 1]
+) %>%
+  arrange(abs(beta)) %>%
+  filter(abs(beta) > 0,
+         !grepl('Intercept', metabolite)) %>%
+  mutate(metabolite = factor(metabolite, levels = metabolite)) %>%
+  ggplot(
+    aes(
+      x = metabolite,
+      y = beta
+    )
+  ) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(
+    y = "Standardized beta coefficients",
+    x = "Metabolite"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+
+```
+
+# External validation
+
+External validation was performed with an independent Czech cohort. 
+
+As a first step, we will use the previously developed and validated elastic net model to predict vegan status in the independent Czech cohort. The validation data will be standardized using the mean and standard deviation of each metabolite from the training cohort to ensure comparability across datasets. For each subject in the external validation cohort, we will estimate the predicted probability of being vegan using the elastic net model. This predicted probability will then be used as a variable to discriminate between the diet groups in the independent cohort.
+
+In a 2nd step, we will look at metabolites that significantly differed between diet groups (average vegan diet effect across both countries, FDR<0.01) estimated with linear models (one per metabolite) with training cohort. Then we will fit linear models also for external validation cohort. Effect of vegan diet on these metabolites will be shown along with 95% confidence interval for all cohorts: training Czech and Italian cohorts, but also in Czech independent (validating) cohort
+
+## Diet discrimination (elastic net)
+
+#### Get table of weights, means and SDs
+
+```{r, warning=FALSE}
+
+coefs_metabolom <- get_coef(
+  original_data = data_analysis_metabolom,
+  glmnet_model = elanet_metabolit_all)
+
+coefs_metabolom
+```
+
+
+#### Identify shared and missing predictors
+
+```{r}
+## Colnames in validation set
+names(data_metabolites_validation)
+
+## Which are missing in the validation set
+missing <- setdiff(
+  coefs_metabolom$predictor[-1], 
+  colnames(
+    data_metabolites_validation
+    )
+  )
+
+missing
+
+## Which are common with the validations et
+common_predictors <- intersect(coefs_metabolom$predictor, colnames(data_metabolites_validation))
+
+common_predictors
+
+```
+
+
+#### Standardize data in validation set 
+
+```{r}
+data_metabolites_validation_pred <- data_metabolites_validation %>%
+  dplyr::mutate(
+    vegan = if_else(
+      SKUPINA == 1, 1, 0
+    )
+  ) %>%
+  dplyr::select(
+    vegan,
+    dplyr::all_of(common_predictors)
+  ) %>% 
+  dplyr::mutate(
+    across(
+      .cols = -vegan,
+      .fns = trans_metabolite
+      )
+    ) %>% 
+  dplyr::mutate(
+    across(
+      .cols = -vegan,
+      .fns = ~ . 
+      - coefs_metabolom$mean[
+        match(
+          cur_column(), 
+          coefs_metabolom$predictor
+          )
+        ]
+      )
+    ) %>% 
+  dplyr::mutate(
+    across(
+      .cols = -vegan,
+      .fns = ~ . 
+      / coefs_metabolom$SD[
+        match(
+          cur_column(), 
+          coefs_metabolom$predictor
+          )
+        ]
+      )
+    )
+
+data_metabolites_validation_pred %>% names()
+```
+
+#### Get predicted value
+
+```{r}
+elanet_metabolit_all$fit
+newx <- as.matrix(data_metabolites_validation_pred[,-1])
+
+tr <- data_metabolites_validation_pred %>% 
+  dplyr::mutate(
+    predicted_logit = as.numeric(
+      predict(
+        elanet_metabolit_all$fit, 
+        newx = newx
+        )
+      )
+    ) %>% 
+  dplyr::mutate(
+    predicted = inv_logit(predicted_logit)
+  )
+```
+
+### Result of validation
+
+```{r}
+#| fig.cap: "Receiver operating characteristics (ROC) curve showing the model’s ability to discriminate between vegan and omnivore status in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
+ 
+roc_metabolite <- pROC::roc(
+  vegan ~ predicted_logit,
+  data = tr,
+  direction = "<",
+  levels = c(0, 1),
+  ci = TRUE
+)
+
+roc_metabolite
+plot(roc_metabolite)
+```
+
+## Diet effect across datasets (forest plot)
+
+
+Similarly as in training data cohorts, we will fit linear model per each of the selected metabolite level ($log_{2}$ - transformed), with a single fixed effect factor of `diet`. 
+
+### Linear model in validation cohort
+
+```{r}
+data_analysis_metabolom <- data_metabolites_validation %>%
+  dplyr::mutate(
+    Diet_VEGAN = as.numeric(
+      dplyr::if_else(
+        SKUPINA == 1, 1, 0
+      )
+    ),
+    dplyr::across(
+      `formate`:`2-hydroxybutyrate`, ~ trans_metabolite(.)
+    )
+  ) %>%
+  dplyr::select(
+    Diet_VEGAN,
+    dplyr::everything()
+  )
+
+summary(data_analysis_metabolom[, 1:12])
+```
+
+#### Define number of metabolites and covariates
+
+```{r}
+n_covarites <- 5
+n_features <- ncol(data_analysis_metabolom) - n_covarites
+```
+
+#### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+log2FD_VGdiet <- vector('double', n_features)
+P_VGdiet <- vector('double', n_features)
+CI_L_VGdiet <- vector('double', n_features)
+CI_U_VGdiet <- vector('double', n_features)
+```
+
+#### Linear models per outcome
+
+
+```{r}
+for (i in 1:n_features) {
+  ## define variable
+  data_analysis_metabolom$outcome <- data_analysis_metabolom[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Diet_VEGAN, data = data_analysis_metabolom)
+
+  ## save results
+  outcome[i] <- names(data_analysis_metabolom)[i + n_covarites]
+
+  ## extract diet effect
+  tr <- confint(model)
+
+  CI_L_VGdiet[i] <- tr[which(row.names(tr) == "Diet_VEGAN"), ][1]
+  CI_U_VGdiet[i] <- tr[which(row.names(tr) == "Diet_VEGAN"), ][2]
+
+  log2FD_VGdiet[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 1
+  ]
+
+  P_VGdiet[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 4
+  ]
+}
+```
+
+
+#### Results table
+
+```{r}
+result_metabolom_val <- data.frame(
+  outcome,
+  log2FD_VGdiet, P_VGdiet,
+  CI_L_VGdiet, CI_U_VGdiet
+)
+
+kableExtra::kable(result_metabolom_val,
+                  caption = 'Results of linear models estimating the effect of diet on metabolite levels. Only metabolites that significantly differed between diet groups in training cohorts (FDR < 0.1, average effect across both training cohorts) were included. `log2FD` represents the estimated effects (regression coefficient), indicating how much the log2-transformed metabolite levels differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model.') 
+
+if(file.exists('gitignore/result_metabolom_validation.csv') == FALSE){
+  write.table(result_metabolom_val,
+              'gitignore/result_metabolom_validation.csv', 
+              row.names = FALSE)
+  }
+```
+
+### Forest plot
+
+#### Prepare data
+
+```{r}
+## relevant metabolites
+diet_sensitive_metabolites <- result_metabolom %>%
+  filter(
+    fdr_VGdiet_avg < 0.1
+  ) %>%
+  select(
+    outcome
+  )
+
+len <- nrow(diet_sensitive_metabolites)
+
+## subset result tables
+result_metabolom_subset <- result_metabolom %>%
+  filter(outcome %in% diet_sensitive_metabolites$outcome)
+
+result_metabolom_val_subset <- result_metabolom_val %>%
+  filter(outcome %in% diet_sensitive_metabolites$outcome)
+
+## create a data frame
+data_forest <- data.frame(
+  outcome = rep(diet_sensitive_metabolites$outcome, 3),
+  beta = c(
+    result_metabolom_subset$log2FD_VGdiet_inCZ,
+    result_metabolom_subset$log2FD_VGdiet_inIT,
+    result_metabolom_val_subset$log2FD_VGdiet
+  ),
+  lower = c(
+    result_metabolom_subset$CI_L_VGdiet_inCZ,
+    result_metabolom_subset$CI_L_VGdiet_inIT,
+    result_metabolom_val_subset$CI_L_VGdiet
+  ),
+  upper = c(
+    result_metabolom_subset$CI_U_VGdiet_inCZ,
+    result_metabolom_subset$CI_U_VGdiet_inIT,
+    result_metabolom_val_subset$CI_U_VGdiet
+  ),
+  dataset = c(
+    rep("CZ", len),
+    rep("IT", len),
+    rep("Validation", len)
+  )
+)
+```
+
+#### Create forest plot
+
+```{r, fig.height=8, fig.width=6}
+#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the levels of selected log2-transformed metabolites, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (external validation). Green points/lines represent the difference in metabolite levels between vegans and omnivores within the Italian cohort; blue points/lines represent the same difference within the Czech cohort; grey points/lines represent the same difference within the Czech external validation cohort. Positive values suggest a higher metabolite level in vegans compared to omnivores. Only metabolites that showed significant differences between vegan and omnivorous diets (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor."
+  
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+ggplot(data_forest, aes(x = outcome, y = beta, ymin = lower, ymax = upper, color = dataset)) +
+  geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+  geom_hline(yintercept = 0, color = 'black') +
+  geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+  scale_color_manual(values = colors) +
+  labs(
+    y = "Effect of vegan diet on log2-trasformed metabolite level", 
+    x = "Outcome", 
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  coord_flip() +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )  
+```
+
+
+# Reproducibility
+
+```{r}
+sessionInfo()
+```

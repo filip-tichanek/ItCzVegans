@@ -1,0 +1,75 @@
+---
+title: "Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations"
+subtitle: "Reports hub"
+format: 
+  html:  
+    embed-resources: true
+    keep-md: false
+    toc: true
+    toc-expand: 3
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    number-depth: 4
+    code-fold: show
+    code-tools: true
+    code-summary: "Open code"
+    grid: 
+      body-width: 1000px
+      sidebar-width: 600px
+      margin-width: 100px
+editor: source
+project:
+  type: default
+  output-dir: output
+theme: darkly
+highlight-style: github-dark
+fontsize: 12 px
+code-block-bg: "#2D2D31"
+bibliography: references.bib
+fontcolor: "#D1D1D1"
+monobackgroundcolor: "#3B3B3B"
+---
+
+------------------------------------------------------------------------
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+```{css, echo=FALSE}
+code.sourceCode {
+  font-size: 0.86em;
+  border: 1px solid #ffffff; 
+  padding: 9px; 
+}
+
+code{
+    color: #EEE8AA; 
+    background: #96464D
+}
+
+.equation {
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+body {
+  text-align: justify;
+}
+```
+
+# Reports hub
+
+All reports use an initialization file and custom R functions file. The [initialization](https://github.com/filip-tichanek/CzItVegans/blob/main/478_initiation.R) file includes basic data preprocessing and wrangling, loading packages, etc. The custom [R functions](https://github.com/filip-tichanek/CzItVegans/blob/main/368_functions.R) contains definition and description of each custom function used for this project in Roxygen format.
+
+A report [478_code04_methods](html_reports/478_code04_methods.html) describes the statistical methodology in details. 
+
+Other reports show step-by-step analysis of each dataset (microbiome, metabolome, lipidome), including linear models describing the effect of `diet`, `country` and `diet:country` interaction on individual features, elastic net regression predicting vegan status based on given imocs features, and external validation of both linear models and predictive regression on the indepedent extrernal cohort.    
+
+-    [478_code01_metabolom](html_reports/478_code01_metabolom.html) shows analysis of metabolom   
+-    [478_code02_lipidom](html_reports/478_code02_lipidom.html) shows analysis of lipidom
+-    [478_code03_microbiome](html_reports/478_code03_microbiome.html) shows analysis of microbiome
+
+
