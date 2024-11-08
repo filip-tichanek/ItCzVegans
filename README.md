@@ -51,7 +51,7 @@ To further explore whether the found signature can be generalizable to otehr dat
 
 ## Statistical Methods
 
-The statistical modeling approach is described in detail in [this report](TO BE ADDED). Briefly, the methods used included:
+The statistical modeling approach is described in detail in [this report](https://filip-tichanek.github.io/ItCzVegans/html_reports/478_code04_methods.html). Briefly, the methods used included:
 
 - **Multivariate analysis**: We conducted multivariate analyses (PERMANOVA, PCA, correlation analyses) to explore the effects of `diet`, `country`, and their possible interaction (`diet : country`) on the microbiome, lipidome, and metabolome compositions in an integrative manner. This part of the analysis is not available on the GitHub page, but the code will be provided upon request.
 
