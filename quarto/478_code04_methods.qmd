@@ -1,0 +1,118 @@
+---
+title: "Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations"
+subtitle: "Statistical report - statistical methodology in details"
+format: 
+  html:  
+    embed-resources: true
+    keep-md: false
+    toc: true
+    toc-expand: 3
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    number-depth: 4
+    code-fold: show
+    code-tools: true
+    code-summary: "Open code"
+    grid: 
+      body-width: 1000px
+      sidebar-width: 600px
+      margin-width: 100px
+editor: source
+project:
+  type: default
+  output-dir: output
+theme: darkly
+highlight-style: github-dark
+fontsize: 12 px
+code-block-bg: '#2D2D31'
+fontcolor: '#D1D1D1'
+monobackgroundcolor: '#3B3B3B'
+bibliography: references.bib
+---
+
+------------------------------------------------------------------------
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+```{css, echo=FALSE}
+code.sourceCode {
+  font-size: 0.85em;
+  border: 1px solid #ffffff; /* White border */
+  padding: 20px; /* Add padding for better visibility */
+}
+
+code{
+    color: #EEE8AA; /* Change the color value as needed */
+}
+
+.equation {
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+body {
+  text-align: justify;
+}
+
+```
+
+{{< include README.md >}}
+
+## Statistical Methods in details
+
+All statistical analyses were performed using R, version 4.4.1 (2024-06-14) [@Rcomp]. Data visualizations were done with the `ggplot2` package [@ggplot2].
+
+### Linear model per feature
+
+For each dataset in the training cohorts, we fitted a feature-specific linear model where the transformed feature (metabolite, lipid, or bacteria) represented the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represented fixed-effects predictors. So, each model has following form
+
+$$
+g(\text{outcome}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet} + \beta_{3} \times \text{country:diet} + \epsilon
+$$
+
+with $g$ representing the transformation applied: $log_{2}$ for metabolomic and lipidomic data, and center-log-ratio for microbiome data.
+
+The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.\
+This parameterization allowed us to interpret the linear model summary as presenting the average conditional effects of `diet` across both countries and the average conditional effects of `country` across both diet groups. We then used the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
+
+Features that showed a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR \< 0.1) were then visualized using a forest plot. The plot displayed the estimated difference in the level of given feature between vegan and omnivorous subject, and 95% confidence intervals across all three cohorts (Czech and Italian training cohorts, as well as the Czech external validation cohort) separately to evaluate whether found associations of given feature with diet can be generalized to other datasets.
+
+### Diet prediction
+
+To assess the predictive power of microbiome, lipidome and metabolome features on diet strategy, we employed Elastic Net logistic regression, utilizing the `glmnet` R package [@glmnet]. For each dataset (microbiome, metabolome and lipidome) we fitted separate models.
+
+As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to have $mean = 0$ and $standard deviation = 0.5$ using the arm R package [@arm] to ensure scale comparability.
+
+The models were firstly evaluated in terms of out-of-sample performance (ROC-AUC) using out-of-bag bootstrap (500 resamplings). The performance of the predictive models was evaluated through their capacity of discriminate between vegan and omnivore diets, using area under ROC curve (AUC) as the measure of discriminatory capacity (estimated with `pROC` R package [@pROC]). The models were finally validated using external data from an independent (validation) Czech cohort.
+
+The process of building the elastic net models and estimating accuracy involved the following steps:
+
+Training and internal validation
+
+1.  The `cv.glmnet` function from the `glmnet` package was utilized to determine the optimal alpha and lambda value (`lambda.1se` was selected for use).
+
+2.  The `glmnet` function from the `glmnet` package was used to fit model using training data and hyperparameters values optimized in the previous step.
+
+3.  Data were resampled 500 times. Hyperparameters were re-optimized again and again for each resample.
+
+4.  The `glmnet` function was applied with resampled data for training. Data of subjects that **were NOT** present in the $i$-th (resampled) dataset were used for estimation of out-of-sample AUC (internal validation). This was done for all resamples, totaling 500 iterations.
+
+5.  The average AUC and 2.5th and 97.5th percentiles were reported as `out-of-sample AUC` and bounds of 95% confidence intervals.
+
+Developed model was then used for external validation
+
+6.  Data of validation cohort were firstly standardized by $mean$ and $SD$ (both taken from a given feature in training cohort) to ensure that data from the training and the validation cohorts are on comparable scale.
+
+7.  For each subject in the external validation cohort, we estimated predicted probability of given subject being vegan, based on the model that was developed and internally validated using the training cohorts.
+
+8.  The predicted probability was used as a variable discriminating between the diet groups in a new cohort dedicated to independent external validation.
+
+# Reproducibility
+
+```{r, collapse=TRUE}
+sessionInfo()
+```
