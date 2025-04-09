@@ -68,13 +68,13 @@ All statistical analyses were performed using R, version 4.4.1 (2024-06-14) [@Rc
 
 ### Linear model per feature
 
-For each dataset in the training cohorts, we fitted a feature-specific linear model where the transformed feature (metabolite, lipid, or bacteria) represented the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represented fixed-effects predictors. So, each model has following form
+For each dataset in the training cohorts, we fitted a feature-specific linear model where the transformed feature (metabolite \[log2\], lipid \[log2\], microbiome \[CLR\] and pathways \[CLR\]) represented the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represented fixed-effects predictors. So, each model has following form
 
 $$
 g(\text{outcome}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet} + \beta_{3} \times \text{country:diet} + \epsilon
 $$
 
-with $g$ representing the transformation applied: $log_{2}$ for metabolomic and lipidomic data, and center-log-ratio for microbiome data.
+with $g$ representing the transformation applied: $log_{2}$ for metabolomic and lipidomic data, and center-log-ratio (CLR) for microbiome and pathways data (both compositional). For compositional datasets, zeros were assumed to be false zeros and were estimated with the *Log-Ratio Singular Value Decomposition* using `lrSVD` function in 'zCompositions' package [@zCompositions] since this method was shown efficient for replacing zeros even in sparse compositional dataset [@palarea-albaladejo2022].
 
 The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.\
 This parameterization allowed us to interpret the linear model summary as presenting the average conditional effects of `diet` across both countries and the average conditional effects of `country` across both diet groups. We then used the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
@@ -83,7 +83,7 @@ Features that showed a significant diet effect (average effect of `diet` across 
 
 ### Diet prediction
 
-To assess the predictive power of microbiome, lipidome and metabolome features on diet strategy, we employed Elastic Net logistic regression, utilizing the `glmnet` R package [@glmnet]. For each dataset (microbiome, metabolome and lipidome) we fitted separate models.
+To assess the predictive power of lipidome, metabolome, microbiome and pathway-related features on diet strategy, we employed Elastic Net logistic regression, utilizing the `glmnet` R package [@glmnet]. For each dataset (pathways, microbiome, metabolome and lipidome) we fitted separate models.
 
 As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to have $mean = 0$ and $standard deviation = 0.5$ using the arm R package [@arm] to ensure scale comparability.
 

@@ -1,0 +1,1286 @@
+---
+title: "Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations"
+subtitle: "Statistical report for pathway analysis"
+format: 
+  html:  
+    embed-resources: true
+    keep-md: false
+    toc: true
+    toc-expand: 3
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    number-depth: 4
+    code-fold: show
+    code-tools: true
+    code-summary: "Open code"
+    grid: 
+      body-width: 1000px
+      sidebar-width: 600px
+      margin-width: 100px
+editor: source
+project:
+  type: default
+  output-dir: output
+theme: darkly
+highlight-style: github-dark
+fontsize: 12 px
+code-block-bg: "#2D2D31"
+bibliography: references.bib
+fontcolor: "#D1D1D1"
+monobackgroundcolor: "#3B3B3B"
+---
+
+------------------------------------------------------------------------
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+```{css, echo=FALSE}
+code.sourceCode {
+  font-size: 0.86em;
+  border: 1px solid #ffffff; 
+  padding: 9px; 
+}
+
+code{
+    color: #EEE8AA; 
+    background: #96464D
+}
+
+.equation {
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+body {
+  text-align: justify;
+}
+```
+
+
+{{< include README.md >}}
+
+
+# Initiation
+
+## Set home directory
+
+```{r}
+setwd('/home/ticf/GitRepo/ticf/478_MOCA_italian')
+```
+
+## Upload initiation file
+
+```{r}
+source('478_initiation.R')
+```
+
+# Data
+
+## Upload and epxlore
+
+### Get pathways 
+
+Only these pathways that have non-zero values in all observation in at least one dataset will be chosen
+
+```{r}
+data_path_originalCZ <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway)) %>%
+  select(X..Pathway)
+dim(data_path_originalCZ)
+
+
+data_path_originalIT <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway)) %>%
+  select(X..Pathway)
+dim(data_path_originalIT)
+
+
+data_path_validation <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_Validation_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway)) %>%
+  select(X..Pathway)
+dim(data_path_validation)
+
+
+tr <- intersect(
+  data_path_originalCZ$X..Pathway,
+  data_path_originalIT$X..Pathway
+)
+
+paths <- intersect(tr, data_path_validation$X..Pathway)
+length(paths)
+```
+
+
+### Italian data
+
+```{r}
+data_path_originalIT <- read.delim('gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv',  
+                                   header = TRUE, sep = "\t") %>% 
+  filter(X..Pathway %in% paths)
+
+features <- data_path_originalIT[,1]
+split_features <- strsplit(features, ": ")
+feature_name <- sapply(split_features, `[`, 1)
+feature_description <- sapply(split_features, `[`, 2)
+feature_name <- gsub(" |-", "_", feature_name)
+
+row.names(data_path_originalIT) <- c(feature_name)
+data_path_originalIT <- data.frame(t(data_path_originalIT[,-1]))
+attr(data_path_originalIT, "description") <- feature_description
+
+
+originalIT_features <- data_path_originalIT%>%
+  select(where(~ mean(. == 0) < 0.7)) %>% 
+  select(-UNMAPPED, -UNINTEGRATED) %>% 
+  colnames()
+```
+
+
+### Czech data
+
+```{r}
+data_path_originalCZ <- read.delim('gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv',  
+                                   header = TRUE, sep = "\t") %>% 
+  filter(X..Pathway %in% paths)
+
+features <- data_path_originalCZ[,1]
+split_features <- strsplit(features, ": ")
+feature_name <- sapply(split_features, `[`, 1)
+feature_description <- sapply(split_features, `[`, 2)
+feature_name <- gsub(" |-", "_", feature_name)
+
+row.names(data_path_originalCZ) <- c(feature_name)
+data_path_originalCZ <- data.frame(t(data_path_originalCZ[,-1]))
+attr(data_path_originalCZ, "description") <- feature_description
+ 
+originalCZ_features <- data_path_originalCZ %>%
+  select(where(~ mean(. == 0) < 0.7)) %>% 
+  select(-UNMAPPED, -UNINTEGRATED) %>% 
+  colnames()
+```
+
+
+### Validation data
+
+```{r}
+data_pathways_validation <- read.delim(
+  'gitignore/data/pathw/Pathway_abundance_MetaCyc_Validation_humann.tsv', 
+  header = TRUE, 
+  sep = "\t"
+  ) %>% 
+  filter(X..Pathway %in% paths)
+
+features <- data_pathways_validation[,1]
+split_features <- strsplit(features, ": ")
+feature_name <- sapply(split_features, `[`, 1)
+feature_description <- sapply(split_features, `[`, 2)
+feature_name <- gsub(" |-", "_", feature_name)
+
+row.names(data_pathways_validation) <- c(feature_name)
+data_pathways_validation <- data.frame(t(data_pathways_validation[,-1]))
+attr(data_pathways_validation, "description") <- feature_description
+row.names(data_pathways_validation) <- gsub("^X", "K", row.names(data_pathways_validation))
+
+validation_features <- data_pathways_validation %>%
+  select(-UNMAPPED, -UNINTEGRATED) %>% 
+  colnames()
+```
+
+### Merging data
+
+Modify data
+
+```{r, warning=FALSE}
+
+# which taxa
+set.seed(478)
+
+features <- intersect(originalIT_features, originalCZ_features)
+features <- intersect(features, validation_features)
+
+
+# CZ
+data_path_originalCZ_filtered <- data_path_originalCZ %>%
+  select(any_of(features))
+
+data_path_originalCZ_filtered <- data_path_originalCZ_filtered/ rowSums(data_path_originalCZ_filtered)
+
+data_path_originalCZ_filtered <- data_path_originalCZ_filtered %>% 
+  mutate(
+    ID = row.names(.),
+    Country = 'CZ'
+  ) %>% 
+  select(ID, Country, any_of(features))
+
+# IT
+data_path_originalIT_filtered <- data_path_originalIT %>%
+  select(any_of(features))
+
+data_path_originalIT_filtered <- data_path_originalIT_filtered/ rowSums(data_path_originalIT_filtered)
+
+data_path_originalIT_filtered <- data_path_originalIT_filtered %>% 
+  mutate(
+    ID = row.names(.),
+    Country = 'IT'
+  ) %>% 
+  select(ID, Country, any_of(features))
+
+# joining the table
+
+data_path_original_filtered <- bind_rows(data_path_originalIT_filtered,
+                                         data_path_originalCZ_filtered)
+
+bacteria_data <- data_path_original_filtered %>% 
+  select(all_of(features))
+
+if (file.exists("gitignore/data_path_original_impCLR.RData") == FALSE) {
+  
+  bacteria_data_imp <- lrSVD(
+    bacteria_data,
+    label = 0, 
+    dl = NULL, 
+    z.delete = FALSE, 
+    ncp = 2
+  )
+
+  row.names( bacteria_data_imp) <- row.names(bacteria_data) 
+  
+  bacteria_data <- data.frame(clr(bacteria_data_imp)) %>%
+    mutate(ID = row.names(.))
+
+  training_metadata <- read.xlsx("gitignore/data/lipidome_training_cohort.xlsx") %>%
+    select(Sample, Diet) %>%
+    mutate(ID = Sample) %>%
+    select(-Sample)
+
+  data_path_original_filtered <- data_path_original_filtered %>%
+    select(ID, Country) %>%
+    left_join(bacteria_data, by = "ID")
+
+  data_pathways_original_clr <- data_path_original_filtered %>%
+    mutate(
+      Data = if_else(Country == "CZ", "CZ_tr", "IT_tr")
+    ) %>%
+    left_join(training_metadata, by = "ID") %>%
+    select(ID, Diet, Country, Data, everything())
+
+  save(
+    data_pathways_original_clr,
+    file = "gitignore/data_path_original_impCLR.RData"
+  )
+}
+
+load("gitignore/data_path_original_impCLR.RData")
+
+if (file.exists("gitignore/data_pathways_original_impCLR.csv") == FALSE)
+  write.csv(data_pathways_original_clr,
+            "gitignore/data_pathways_original_impCLR.csv")
+
+## Show variances of CLR proportions across samples
+data_variance <- data_pathways_original_clr %>%
+  rowwise() %>%   
+  mutate(variance = var(c_across(-(ID:Data)))) %>%  
+  ungroup() %>%       
+  select(ID, variance)
+
+## Look at distribution
+hist(data_variance$variance)
+
+## Show extreme samples
+data_variance %>% arrange(desc(variance))
+```
+
+
+Get diet `information`Diet` from another dataset for **validating** data
+
+```{r, warning = FALSE}
+validation_metadata <- read.xlsx('gitignore/data/lipidome_validation_cohort.xlsx') %>% 
+  select(X1, X2) %>% 
+  mutate(ID = X1,
+         Diet = X2) %>% 
+  select(-X1, -X2)
+
+data_pathways_validation_filtered <- data_pathways_validation %>% 
+  select(any_of(features))
+
+set.seed(478)
+
+data_pathways_validation_filtered <-  (data_pathways_validation_filtered/
+  rowSums(data_pathways_validation_filtered ))
+
+if (file.exists("gitignore/data_pathways_validation_impCLR.RData") == FALSE) {
+  
+  data_pathways_validation_filtered_imp <- lrSVD(
+    data_pathways_validation_filtered,
+    label = 0, dl = NULL, z.delete = FALSE
+  )
+
+row.names(data_pathways_validation_filtered_imp) <- row.names(data_pathways_validation_filtered)
+
+  data_pathways_validation_clr <- data.frame(
+    clr(data_pathways_validation_filtered_imp)
+  ) %>%
+    mutate(
+      ID = row.names(.),
+      Country = "CZ",
+      Data = "valid"
+    ) %>%
+    left_join(validation_metadata, by = "ID") %>%
+    select(ID, Diet, Country, Data, any_of(features)) %>%
+    filter(!is.na(Diet))
+
+  ## Add Diet for K284 which has the diet missing
+  data_pathways_validation_clr[
+    which(data_pathways_validation_clr$ID == "K284"), "Diet"
+  ] <- "VEGAN"
+
+
+  save(
+    data_pathways_validation_clr, 
+    file = "gitignore/data_pathways_validation_impCLR.RData"
+  )
+}
+
+load("gitignore/data_pathways_validation_impCLR.RData")
+
+if (file.exists("gitignore/data_pathways_validation_impCLR.csv") == FALSE)
+  write.csv(data_pathways_validation_clr,
+            "gitignore/data_pathways_validation_impCLR.csv")
+
+## Show variances of CLR proportions across samples
+data_variance <- data_pathways_validation_clr %>%
+  rowwise() %>%   
+  mutate(variance = var(c_across(-(ID:Data)))) %>%  
+  ungroup() %>%       
+  select(ID, variance)
+
+## Look at distribution
+hist(data_variance$variance)
+
+## Show extreme samples
+data_variance %>% arrange(desc(variance))
+```
+
+
+### Merge training and validation dataset
+
+```{r}
+data_merged <- bind_rows(
+  data_pathways_original_clr,
+  data_pathways_validation_clr
+)
+```
+
+
+## Explore
+
+
+#### Distributions 
+
+The following plot will show distribution of 36 randomly selected pathways
+
+```{r, fig.height=12, fig.width=9}
+size = c(6,6)
+check <- data_pathways_original_clr[, 5:ncol(data_pathways_original_clr)]
+
+check <- check[, sample(1:ncol(check), size[1]*size[2])]
+
+
+par(mfrow = c(size[1],size[2]))
+par(mar=c(2,1.5,2,0.5))
+
+for(x in 1:ncol(check)){
+  hist(check[,x], 
+       16, 
+       col='blue', 
+       main = paste0(colnames(check)[x])
+  )
+}
+  
+```
+
+Data seems to have relatively symmetric distribution
+
+#### Pathways accross groups
+
+```{r, fig.height=12, fig.width=12, warning=FALSE}
+#| fig.cap: "Levels of pathways across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
+
+set.seed(478)
+colo <- c('#F9FFAF','#329243')
+
+outcomes <- data.frame(
+  variable = data_merged %>% 
+    select(any_of(sample(features, 35))) %>% 
+    colnames()
+)
+
+boxplot_cond <- function(variable) {
+  
+  
+  p <- ggboxplot(data_merged, 
+                 x = 'Diet', 
+                 y = variable, 
+                 fill = 'Diet', 
+                 tip.length = 0.15,
+                 palette = colo,
+                 outlier.shape = 1,
+                 lwd = 0.25,
+                 outlier.size = 0.8,
+                 facet.by = 'Data',
+                 title = variable,
+                 ylab = 'pathway level') +
+    
+    theme(
+      plot.title = element_text(size = 10), 
+      axis.title = element_text(size = 8),  
+      axis.text.y = element_text(size = 7),
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank()
+    ) 
+    
+  
+  return(p)
+}
+
+# Plot all outcomes
+plots <- map(outcomes$variable, boxplot_cond)
+
+# Create a matrix of plots
+plots_arranged <- ggarrange(plotlist = plots, ncol = 5, nrow = 7,  common.legend = TRUE)
+plots_arranged
+```
+
+# Linear models across pathways
+
+We will fit a feature-specific linear model where the clr-transformed pathway represents the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represent fixed-effects predictors. So, each model has following form
+
+$$
+clr(\text{pathway level}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet} + \beta_{3} \times \text{country:diet} + \epsilon
+$$
+
+The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.   
+This parameterization allows us to interpret the linear model `summary` output as presenting the conditional effects of `diet` averaged across both countries and the conditional effects of `country` averaged across both diet groups. We will then use the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
+
+pathways that will show a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR < 0.05) will be then visualized using a forest plot, with country-specific diet effect along with diet effect based on independent validation cohort, to evaluate how generalizable are these findings. 
+
+
+
+
+## Select and wrangle data 
+
+```{r}
+data_analysis_pathways <- data_pathways_original_clr %>%
+  na.omit() %>%
+  dplyr::mutate(
+    Diet_VEGAN = as.numeric(
+      dplyr::if_else(
+        Diet == "VEGAN", 0.5, -0.5
+      )
+    ),
+    Country_IT = as.numeric(
+      dplyr::if_else(
+        Country == "IT", 0.5, -0.5
+      )
+    ),
+    ) %>%
+  dplyr::select(
+    ID,
+    Country,
+    Country_IT,
+    Diet,
+    Diet_VEGAN,
+    dplyr::everything()
+  )
+
+summary(data_analysis_pathways[ , 1:12])
+
+data_analysis_pathways[1:5 , 1:8]
+```
+
+### Define number of pathways and covariates
+
+```{r}
+n_covarites <- 6
+n_features <- ncol(data_analysis_pathways) - n_covarites
+```
+
+### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+est_VGdiet_inCZ <- vector('double', n_features)
+est_VGdiet_inIT <- vector('double', n_features)
+est_VGdiet_avg <- vector('double', n_features)
+
+est_ITcountry_avg <- vector('double', n_features)
+diet_country_int <- vector('double', n_features)
+
+
+P_VGdiet_inCZ <- vector('double', n_features)
+P_VGdiet_inIT <- vector('double', n_features)
+P_VGdiet_avg <- vector('double', n_features)
+
+P_ITcountry_avg <- vector('double', n_features)
+P_diet_country_int <- vector('double', n_features)
+
+CI_L_VGdiet_inCZ <- vector('double', n_features)
+CI_L_VGdiet_inIT <- vector('double', n_features)
+CI_L_VGdiet_avg <- vector('double', n_features)
+
+CI_U_VGdiet_inCZ <- vector('double', n_features)
+CI_U_VGdiet_inIT <- vector('double', n_features)
+CI_U_VGdiet_avg <- vector('double', n_features)
+```
+
+## Run linear models over pathways
+
+```{r}
+
+for (i in 1:n_features) {
+  
+  ## define variable
+  data_analysis_pathways$outcome <- data_analysis_pathways[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Country_IT * Diet_VEGAN, data = data_analysis_pathways)
+
+  ## get contrast (effects of diet BY COUNTRY)
+  contrast_emm <- summary(
+    pairs(
+      emmeans(
+        model,
+        specs = ~ Diet_VEGAN | Country_IT
+        ),
+      interaction = TRUE,
+      adjust = "none"
+      ),
+    infer = c(TRUE, TRUE)
+    )
+
+  ## save results
+  outcome[i] <- names(data_analysis_pathways)[i + n_covarites]
+  
+  ## country effect
+  est_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 1
+  ]
+
+  P_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 4
+  ]
+  
+  
+  ## diet effect
+  tr <- confint(model)
+  
+  CI_L_VGdiet_avg[i] <- tr[which(row.names(tr) == 'Diet_VEGAN'),][1]
+  CI_U_VGdiet_avg[i] <- tr[which(row.names(tr) == 'Diet_VEGAN'),][2]
+  
+  est_VGdiet_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 1
+  ]
+
+  P_VGdiet_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 4
+  ]
+  
+  est_VGdiet_inCZ[i] <- -contrast_emm$estimate[1]
+  P_VGdiet_inCZ[i] <- contrast_emm$p.value[1]
+  CI_L_VGdiet_inCZ[i] <- -contrast_emm$upper.CL[1]
+  CI_U_VGdiet_inCZ[i] <- -contrast_emm$lower.CL[1]
+  
+  
+  est_VGdiet_inIT[i] <- -contrast_emm$estimate[2]
+  P_VGdiet_inIT[i] <- contrast_emm$p.value[2]
+  CI_L_VGdiet_inIT[i] <- -contrast_emm$upper.CL[2]
+  CI_U_VGdiet_inIT[i] <- -contrast_emm$lower.CL[2]
+  
+  
+  ## interaction
+  diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_VEGAN"
+    ), 1
+  ]
+
+  P_diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_VEGAN"
+    ), 4
+  ]
+}
+
+```
+
+
+## Results table
+
+```{r}
+result_pathways <- data.frame(
+  outcome,
+  est_ITcountry_avg, P_ITcountry_avg,
+  est_VGdiet_avg, P_VGdiet_avg,
+  est_VGdiet_inCZ, P_VGdiet_inCZ,
+  est_VGdiet_inIT, P_VGdiet_inIT,
+  diet_country_int, P_diet_country_int,
+  CI_L_VGdiet_avg, CI_U_VGdiet_avg,
+  CI_L_VGdiet_inCZ, CI_U_VGdiet_inCZ,
+  CI_L_VGdiet_inIT, CI_U_VGdiet_inIT
+)
+```
+
+### Adjust p values
+
+```{r}
+result_pathways <- result_pathways %>% 
+  dplyr::mutate(
+    fdr_ITcountry_avg = p.adjust(P_ITcountry_avg, method = 'BH'),
+    fdr_VGdiet_avg = p.adjust(P_VGdiet_avg, method = 'BH'),
+    
+    fdr_VGdiet_inCZ = p.adjust(P_VGdiet_inCZ, method = 'BH'),
+    fdr_VGdiet_inIT = p.adjust(P_VGdiet_inIT, method = 'BH'),
+    fdr_diet_country_int = p.adjust(P_diet_country_int, method = 'BH')
+  ) %>% 
+  dplyr::select(
+    outcome,
+    est_ITcountry_avg, P_ITcountry_avg, fdr_ITcountry_avg,
+    est_VGdiet_avg, P_VGdiet_avg, fdr_VGdiet_avg,
+    est_VGdiet_inCZ, P_VGdiet_inCZ, fdr_VGdiet_inCZ,
+    est_VGdiet_inIT, P_VGdiet_inIT, fdr_VGdiet_inIT,
+    diet_country_int, P_diet_country_int, fdr_diet_country_int,
+    CI_L_VGdiet_avg, CI_U_VGdiet_avg,
+    CI_L_VGdiet_inCZ, CI_U_VGdiet_inCZ,
+    CI_L_VGdiet_inIT, CI_U_VGdiet_inIT
+  )
+```
+
+### Result: show and save
+
+```{r}
+kableExtra::kable(result_pathways %>%  filter(fdr_VGdiet_avg < 0.05),
+                  caption = "Result of linear models, modelling CLR-transformed proportion of given pathway with `Diet`, `Country` and `Diet:Country` interaction as predictors. Only the pathways that differ between vegans and omnivores (FDR < 0.05, average diet effect over both countries) are shown. `est` prefix: implies estimated effects (regression coefficient), i.e. how much clr-transformed pathway differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+                  ) 
+
+if(file.exists('gitignore/result_pathways_filt.csv') == FALSE){
+  write.table(result_pathways, 
+              'gitignore/result_pathways_filt.csv', 
+              row.names = FALSE)
+  }
+```
+
+# Elastic net
+
+To assess the predictive power of pathways features on diet strategy, we employed Elastic Net logistic regression. 
+
+As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to by 2 standard deviations.
+
+The performance of the predictive models was evaluated through their capacity of discriminate between vegan and omnivore diets, using out-of-sample area under ROC curve (AUC; estimated with out-of-bag bootstrap) as the measure of discriminatory capacity.
+
+All features were transformed by 2 standard deviations (resulting in standard deviation of 0.5)
+
+
+## Prepare data for `glmnet`
+
+
+```{r}
+
+data_pathways_glmnet <- data_pathways_original_clr %>%
+  dplyr::mutate(
+    vegan = as.numeric(
+      dplyr::if_else(
+        Diet == "VEGAN", 1, 0
+      )
+    )
+  ) %>%
+  dplyr::mutate(
+    dplyr::across(all_of(features), ~ arm::rescale(.))
+  ) %>%
+  dplyr::select(
+    ID, vegan, all_of(features)
+  )
+```
+
+## Fit model
+
+```{r}
+
+modelac <- "elanet_pathways_filt"
+
+assign(
+  modelac,
+  run(
+    expr = clust_glmnet(
+      data = data_pathways_glmnet,
+      outcome = "vegan",
+      clust_id = "ID",
+      sample_method = "oos_boot",
+      N = 500,
+      alphas = c(0, 0.2, 0.4),
+      family = "binomial",
+      seed = 478
+    ),
+    path = paste0("gitignore/run/", modelac)
+  )
+)
+```
+
+## See results
+
+### Model summary
+
+```{r}
+elanet_pathways_filt$model_summary
+```
+
+### Calibration plot
+
+```{r}
+#| fig.cap: "Calibration plot, showing outcomes value (y-axis) according to prediction of elastic net model (x-axis). Grey curves show predictions from different bootstrap iterations. Red lines and shadows show average prediction across all iterations and its 95% confidence"
+
+elanet_pathways_filt$plot
+```
+
+### Estimated coefficients
+
+```{r}
+tr <- data.frame(
+  label = row.names(
+    elanet_pathways_filt$betas
+    )[
+      which(
+        abs(
+          elanet_pathways_filt$betas
+          )>0
+        )
+      ],
+  beta = elanet_pathways_filt$betas[
+    abs(
+      elanet_pathways_filt$betas
+      )>0
+    ]
+  )[-1, ]
+
+tr$pathway <- attr(data_path_originalCZ, 
+                   "description")[
+                     colnames(data_path_originalCZ) %in% tr$label]
+
+kableExtra::kable(tr %>% select(label, pathway, beta))
+
+```
+
+### Plot of coefficients
+
+```{r, fig.height=12, fig.width=7}
+#| fig.cap: "Regression coefficients from the elastic net model predicting vegan diet strategy based on clr-transformed and standardized pathways. Pathways are ordered by the magnitude of the standardized coefficients, indicating their relative importance in distinguishing between the diet groups. The sign of each coefficient indicates the direction of association with vegan diet status, with positive values indicating a higher probability of vegan status and vice versa. Pathways whose effects were shrunk to zero are not shown."
+
+elacoef <- data.frame(
+  pathway = row.names(elanet_pathways_filt$betas),
+  beta_ela = elanet_pathways_filt$betas[, 1]
+) %>%
+  arrange(abs(beta_ela)) %>%
+  filter(abs(beta_ela) > 0,
+         !grepl('Intercept', pathway)) %>%
+  mutate(pathway = factor(pathway, levels = pathway)) 
+
+
+plotac <- "elanet_beta_pathway"
+path <- "gitignore/figures"
+
+assign(plotac, 
+  ggplot(elacoef,
+    aes(
+      x = pathway,
+      y = beta_ela
+    )
+  ) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(
+    y = "Standardized beta coefficients",
+    x = "pathway"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
+    ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 7,
+    height = 12
+  )
+}
+
+get(plotac)
+  
+```
+
+# External validation
+
+External validation was performed with an independent Czech cohort. 
+
+As a first step, we will use the previously developed and internally validated elastic net model to predict vegan status in the independent Czech cohort. The validation data will be standardized using the mean and standard deviation of each pathway level from the training cohort to ensure comparability across datasets. For each subject in the external validation cohort, we will estimate the predicted probability of being vegan using the elastic net model. This predicted probability will then be used as a variable to discriminate between the diet groups in the independent cohort.
+
+In a 2nd step, we will look at pathways that significantly differed between diet groups (average vegan diet effect across both countries, FDR < 0.05) estimated with linear models (one per pathway) with training cohort. Then we will fit linear models also for external validation cohort. Effect of vegan diet on these pathways will be shown along with 95% confidence interval for all cohorts: training Czech and Italian cohorts, but also in Czech independent (validating) cohort
+
+## Diet discrimination (elastic net)
+
+#### Get table of weights, means and SDs
+
+```{r, warning=FALSE}
+
+coefs_pathways <- get_coef(
+  original_data = data_analysis_pathways,
+  glmnet_model = elanet_pathways_filt)
+
+```
+
+
+#### Identify shared and missing predictors
+
+```{r}
+## Which are common with the validations et
+common_predictors <- intersect(coefs_pathways$predictor, colnames(data_pathways_validation_clr))
+```
+
+
+#### Standardize data in validation set 
+
+```{r}
+data_pathways_validation_pred <- data_pathways_validation_clr %>%
+  dplyr::mutate(
+    vegan = if_else(
+      Diet == 'VEGAN', 1, 0
+    )
+  ) %>%
+  dplyr::select(
+    vegan,
+    dplyr::all_of(common_predictors)
+  ) %>% 
+  dplyr::mutate(
+    across(
+      .cols = -vegan,
+      .fns = ~ . 
+      - coefs_pathways$mean[
+        match(
+          cur_column(), 
+          coefs_pathways$predictor
+          )
+        ]
+      )
+    ) %>% 
+  dplyr::mutate(
+    across(
+      .cols = -vegan,
+      .fns = ~ . 
+      / coefs_pathways$SD[
+        match(
+          cur_column(), 
+          coefs_pathways$predictor
+          )
+        ]
+      )
+    )
+```
+
+#### Get predicted value
+
+```{r}
+elanet_pathways_filt$fit
+newx <- as.matrix(data_pathways_validation_pred[,-1])
+
+tr <- data_pathways_validation_pred %>% 
+  dplyr::mutate(
+    predicted_logit = as.numeric(
+      predict(
+        elanet_pathways_filt$fit, 
+        newx = newx
+        )
+      )
+    ) %>% 
+  dplyr::mutate(
+    predicted = inv_logit(predicted_logit)
+  )
+```
+
+### Result of validation
+
+```{r}
+#| fig.cap: "Receiver operating characteristics (ROC) curve showing the model’s ability to discriminate between vegan and omnivore status in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
+ 
+roc_pathway <- pROC::roc(
+  vegan ~ predicted_logit,
+  data = tr,
+  direction = "<",
+  levels = c(0, 1),
+  ci = TRUE
+)
+
+plotac <- "roc_pathway"
+path <- "gitignore/figures"
+
+assign(plotac, ggroc(roc_pathway))
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 6,
+    height = 4.5
+  )
+}
+```
+
+## Diet effect across datasets (forest plot)
+
+
+Similarly as in training data cohorts, we will fit linear model per each of the selected pathway level with a single fixed effect factor of `diet`. 
+
+### Linear model in validation cohort
+
+```{r}
+data_analysis_pathways <- data_pathways_validation_clr %>%
+  dplyr::mutate(
+    Diet_VEGAN = as.numeric(
+      dplyr::if_else(
+        Diet == 'VEGAN', 1, 0
+      )
+    )  ) %>%
+  dplyr::select(
+    Diet_VEGAN,
+    dplyr::everything()
+  )
+
+summary(data_analysis_pathways[, 1:12])
+```
+
+#### Define number of pathways and covariates
+
+```{r}
+n_covarites <- 5
+n_features <- ncol(data_analysis_pathways) - n_covarites
+```
+
+#### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+est_VGdiet <- vector('double', n_features)
+P_VGdiet <- vector('double', n_features)
+CI_L_VGdiet <- vector('double', n_features)
+CI_U_VGdiet <- vector('double', n_features)
+```
+
+#### Linear models per outcome
+
+
+```{r}
+for (i in 1:n_features) {
+  ## define variable
+  data_analysis_pathways$outcome <- data_analysis_pathways[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Diet_VEGAN, data = data_analysis_pathways)
+
+  ## save results
+  outcome[i] <- names(data_analysis_pathways)[i + n_covarites]
+
+  ## extract diet effect
+  tr <- confint(model)
+
+  CI_L_VGdiet[i] <- tr[which(row.names(tr) == "Diet_VEGAN"), ][1]
+  CI_U_VGdiet[i] <- tr[which(row.names(tr) == "Diet_VEGAN"), ][2]
+
+  est_VGdiet[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 1
+  ]
+
+  P_VGdiet[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_VEGAN"
+    ), 4
+  ]
+}
+```
+
+
+#### Results table
+
+```{r}
+## relevant pathways
+diet_sensitive_pathways <- result_pathways %>%
+  filter(
+    fdr_VGdiet_avg < 0.05
+  ) %>%
+  select(
+    outcome
+  )
+
+result_pathways_val <- data.frame(
+  outcome,
+  est_VGdiet, P_VGdiet,
+  CI_L_VGdiet, CI_U_VGdiet
+) %>% 
+  filter(outcome %in% diet_sensitive_pathways$outcome)
+
+tr <- attr(
+  data_path_originalCZ,
+  "description")[colnames(data_path_originalCZ) %in% result_pathways_val$outcome]
+
+val_res <- cbind(pathway = tr, result_pathways_val) %>% 
+  arrange(desc(est_VGdiet))
+
+kableExtra::kable(val_res,
+                  caption = 'Results of linear models estimating the effect of diet on pathway levels. `est` represents the estimated effects (regression coefficient), indicating how much the clr-transformed pathway levels differ between vegans and omnivores. `P`: p-value, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively.') 
+
+if(file.exists('gitignore/result_pathways_validation_filt.csv') == FALSE){
+  write.table(val_res,
+              'gitignore/result_pathways_validation_filt.csv', 
+              row.names = FALSE)
+  }
+```
+
+### Forest plot
+
+#### Data preparation
+
+```{r}
+
+len <- nrow(diet_sensitive_pathways)
+
+## subset result tables
+result_pathways_subset <- result_pathways %>%
+  filter(outcome %in% diet_sensitive_pathways$outcome)
+
+result_pathways_val_subset <- result_pathways_val %>%
+  filter(outcome %in% diet_sensitive_pathways$outcome)
+
+## create a data frame
+data_forest <- data.frame(
+  outcome = rep(diet_sensitive_pathways$outcome, 3),
+  beta = c(
+    result_pathways_subset$est_VGdiet_inCZ,
+    result_pathways_subset$est_VGdiet_inIT,
+    result_pathways_val_subset$est_VGdiet
+  ),
+  lower = c(
+    result_pathways_subset$CI_L_VGdiet_inCZ,
+    result_pathways_subset$CI_L_VGdiet_inIT,
+    result_pathways_val_subset$CI_L_VGdiet
+  ),
+  upper = c(
+    result_pathways_subset$CI_U_VGdiet_inCZ,
+    result_pathways_subset$CI_U_VGdiet_inIT,
+    result_pathways_val_subset$CI_U_VGdiet
+  ),
+  dataset = c(
+    rep("CZ", len),
+    rep("IT", len),
+    rep("Validation", len)
+  )
+)
+
+
+validation_order <- data_forest %>%
+  left_join(
+    val_res %>% select(outcome, pathway),
+    by = 'outcome'
+  ) %>% 
+  filter(dataset == "Validation") %>%
+  arrange(beta) %>%
+  pull(pathway)
+
+up_winners <- data_forest %>% 
+  pivot_wider(names_from = dataset,
+              values_from = c(beta, lower, upper)) %>% 
+  left_join(
+    elacoef %>% mutate(outcome = pathway) %>% select(-pathway), 
+    by = 'outcome') %>% 
+  filter(beta_CZ > 0,
+         beta_IT > 0,
+         lower_Validation > 0,
+         beta_ela > 0.1) %>% 
+  select(outcome)
+
+down_winners <- data_forest %>% 
+  pivot_wider(names_from = dataset,
+              values_from = c(beta, lower, upper)) %>% 
+  left_join(elacoef %>% mutate(outcome = pathway) %>% select(-pathway),
+            by = 'outcome') %>% 
+  filter(beta_CZ < 0,
+         beta_IT < 0,
+         upper_Validation < 0,
+         beta_ela < -0.1) %>% 
+  select(outcome)
+
+winners <- as.character(c(up_winners$outcome, down_winners$outcome))
+
+ data_forest <- data_forest %>%
+  mutate(in_winner = if_else(outcome %in% winners, TRUE, FALSE, missing = FALSE)) %>%
+  left_join(
+    val_res %>% select(outcome, pathway),
+    by = 'outcome'
+  ) %>% 
+  left_join(
+    elacoef %>% mutate(outcome = pathway) %>% select(-pathway), 
+    by = 'outcome') %>%  
+   mutate(pathway = factor(pathway, levels = validation_order))
+```
+
+#### Plotting
+
+```{r, fig.height=12, fig.width=10}
+#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the CLR-transformed proportion of selected metabolic pathways, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in CLR-transformed taxon proportions between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher pathway level in vegans compared to omnivores. Only pathways that showed significant differences between vegan and omnivorous diets (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Patways validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
+
+plotac <- "forest_pathway"
+path <- "gitignore/figures"
+
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+assign(
+  plotac,
+  ggplot(data_forest, 
+         aes(x = pathway, 
+             y = beta, 
+             ymin = lower,
+             ymax = upper, 
+             color = dataset)) +
+    geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+    geom_hline(yintercept = 0, color = "black") +
+    geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+    scale_color_manual(values = colors) +
+    labs(
+      y = "Effect of vegan diet on clr-trasformed pathway",
+      x = "Outcome",
+      color = "Dataset"
+    ) +
+    theme_minimal() +
+    coord_flip() +
+    scale_x_discrete(
+    labels = setNames(
+      ifelse(data_forest$in_winner, 
+             paste0("**", data_forest$pathway, "**"), 
+             as.character(data_forest$pathway)
+      ), data_forest$pathway
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = ggtext::element_markdown(size = 10),  
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 10,
+    height = 12
+  )
+}
+```
+
+### Boxplot
+
+```{r, fig.height=13, fig.width=12, warning=FALSE}
+#| fig.cap: "Levels of pathways across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
+
+plotac <- "boxplot_pathway"
+path <- "gitignore/figures"
+
+colo <- c("#F9FFAF", "#329243")
+
+boxplot_cond <- function(variable) {
+  p <- ggboxplot(data_merged,
+    x = "Diet",
+    y = variable,
+    fill = "Diet",
+    tip.length = 0.15,
+    palette = colo,
+    outlier.shape = 1,
+    lwd = 0.25,
+    outlier.size = 0.8,
+    facet.by = "Data",
+    title = variable,
+    ylab = "CLR(pathway proportion)"
+  ) +
+
+    theme(
+      plot.title = element_text(size = 10),
+      axis.title = element_text(size = 8),
+      axis.text.y = element_text(size = 7),
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank()
+    )
+
+  return(p)
+}
+
+# Plot all outcomes
+plots <- map(diet_sensitive_pathways$outcome, boxplot_cond)
+
+# Create a matrix of plots
+plots_arranged <- ggarrange(plotlist = plots, ncol = 5, nrow = 7, common.legend = TRUE)
+assign(plotac, plots_arranged)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 13,
+    height = 12
+  )
+}
+
+get(plotac)
+```
+
+
+
+# Reproducibility
+
+```{r}
+sessionInfo()
+```
