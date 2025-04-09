@@ -26,6 +26,7 @@ if (TRUE) {
     library(ggpubr)
     library(cowplot)
     library(ggdist)
+    library(ggtext)
     ### STATS
     library(glmmTMB)
     library(rms)
@@ -36,6 +37,8 @@ if (TRUE) {
     library(pROC)
     library(glmnet)
     library(MicrobiomeStat)
+    library(zCompositions)
+    library(vegan)
   }))
 }
 
