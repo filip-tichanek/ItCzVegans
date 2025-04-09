@@ -10,7 +10,7 @@ Monika Cahova<sup>1,*</sup>, Anna Ouradova<sup>2,*</sup>, Giulio Ferrero<sup>3,4
 <sup>#</sup> These authors have contributed equally to this work and share last authorship   
 
 <sup>1</sup> Institute for Clinical and Experimental Medicine, Prague, Czech Republic     
-<sup>2</sup> Department of Internal Medicine, Kralovske Vinohrady University Hospital and Third Faculty of Medicine, Charles University, Prague, Czech Republic
+<sup>2</sup> Department of Internal Medicine, Kralovske Vinohrady University Hospital and Third Faculty of Medicine, Charles University, Prague, Czech Republic   
 <sup>3</sup> Department of Clinical and Biological Sciences, University of Turin, Turin, Italy      
 <sup>4</sup> Department of Computer Science, University of Turin, Turin, Italy   
 <sup>5</sup> Czech Centre for Phenogenomics, Institute of Molecular Genetics of the Czech Academy of Sciences, Prague, Czech Republic   
