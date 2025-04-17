@@ -22,7 +22,7 @@ Monika Cahova<sup>1,*</sup>, Anna Ouradova<sup>2,*</sup>, Giulio Ferrero<sup>3,4
 
 ---------------------------------------------------------------------------------------------------
 
-This is a statistical report of the study *Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations* that is *under review* in [Nature Communications](https://www.nature.com/ncomms/)
+This is a statistical report of the study *Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations* that is currently *under review*
 
 When using this code or data, cite the original publication:
 
