@@ -595,11 +595,11 @@ data_microbiome_glmnet <- data_microbiome_original %>%
     )
   ) %>%
   dplyr::select(
-    vegan,
+    vegan,Country,
     dplyr::everything()
   ) %>%
   dplyr::select(
-    Sample, vegan, 
+    Sample, vegan, Country,
     `Bacteroides_stercoris|SGB1830`:`Clostridiaceae_unclassified_SGB4771|SGB4771`
   )
 ```
@@ -613,7 +613,7 @@ modelac <- "elanet_microbiome_SGB30"
 assign(
   modelac,
   run(
-    expr = clust_glmnet(
+    expr = clust_glmnet_sep(
       data = data_microbiome_glmnet,
       outcome = "vegan",
       clust_id = "Sample",
@@ -632,6 +632,7 @@ assign(
 
 ```{r}
 elanet_microbiome_SGB30$model_summary
+elanet_microbiome_SGB30$country_AUC
 ```
 
 ## Calibration plot

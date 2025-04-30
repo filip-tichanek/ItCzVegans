@@ -718,7 +718,7 @@ data_pathways_glmnet <- data_pathways_original_clr %>%
     dplyr::across(all_of(features), ~ arm::rescale(.))
   ) %>%
   dplyr::select(
-    ID, vegan, all_of(features)
+    ID, vegan, Country, all_of(features)
   )
 ```
 
@@ -731,7 +731,7 @@ modelac <- "elanet_pathways_filt"
 assign(
   modelac,
   run(
-    expr = clust_glmnet(
+    expr = clust_glmnet_sep(
       data = data_pathways_glmnet,
       outcome = "vegan",
       clust_id = "ID",
@@ -752,6 +752,7 @@ assign(
 
 ```{r}
 elanet_pathways_filt$model_summary
+elanet_pathways_filt$country_AUC
 ```
 
 ### Calibration plot

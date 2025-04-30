@@ -69,7 +69,7 @@ body {
 ## Set home directory
 
 ```{r}
-setwd('/home/ticf/GitRepo/ticf/478_MOCA_italian')
+setwd('/home/ticf/1_ticf_sec/478_MOCA_italian/')
 ```
 
 ## Upload initiation file
@@ -501,7 +501,7 @@ data_metabolites_glmnet <- data_metabolites_original %>%
     )
   ) %>% 
   dplyr::select(
-    Sample, vegan, `formate`:`2-hydroxybutyrate`
+    Sample, vegan, Country, `formate`:`2-hydroxybutyrate`
   )
 
 dim(data_metabolites_glmnet)
@@ -518,7 +518,7 @@ modelac <- "elanet_metabolit_all"
 assign(
   modelac,
   run(
-    expr = clust_glmnet(
+    expr = clust_glmnet_sep(
       data = data_metabolites_glmnet,
       outcome = "vegan",
       clust_id = "Sample",
@@ -539,6 +539,7 @@ assign(
 
 ```{r}
 elanet_metabolit_all$model_summary
+elanet_metabolit_all$country_AUC
 ```
 
 ### Calibration plot

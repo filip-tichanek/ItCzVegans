@@ -768,12 +768,12 @@ data_lipids_glmnet <- data_lipids_original %>%
     dplyr::everything()
   ) %>%
   dplyr::select(
-    Sample, vegan, `ACar 10:0`:`TG 18:1_18:1_20:4`
+    Sample, vegan,Country, `ACar 10:0`:`TG 18:1_18:1_20:4`
   )
 
 data_lipids_glmnet_inter_CompletVal <- data_lipids_glmnet %>%
   dplyr::select(
-    Sample, vegan, 
+    Sample, vegan, Country, 
     dplyr::all_of(
       intersect(
         colnames(
@@ -796,7 +796,7 @@ modelac <- "elanet_lipid_inter_CompletVal"
 assign(
   modelac,
   run(
-    expr = clust_glmnet(
+    expr = clust_glmnet_sep(
       data = data_lipids_glmnet_inter_CompletVal,
       outcome = "vegan",
       clust_id = "Sample",
@@ -815,6 +815,7 @@ assign(
 
 ```{r}
 elanet_lipid_inter_CompletVal$model_summary
+elanet_lipid_inter_CompletVal$country_AUC
 ```
 
 ## Calibration plot
