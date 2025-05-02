@@ -11,7 +11,7 @@ format:
     toc-location: left
     number-sections: true
     number-depth: 4
-    code-fold: show
+    code-fold: true
     code-tools: true
     code-summary: "Open code"
     grid: 
@@ -70,7 +70,7 @@ body {
 
 ```{r}
 
-setwd('/home/ticf/GitRepo/ticf/478_MOCA_italian')
+setwd('/home/ticf/1_ticf_sec/478_MOCA_italian/')
 ```
 
 ## Upload initiation file
@@ -818,13 +818,63 @@ elanet_lipid_inter_CompletVal$model_summary
 elanet_lipid_inter_CompletVal$country_AUC
 ```
 
-## Calibration plot
-
+## ROC curve - internal validation
 
 ```{r}
-#| fig.cap: "Calibration plot, showing outcomes value (y-axis) according to prediction of elastic net model (x-axis). Grey curves show predictions from different bootstrap iterations. Red lines and shadows show average prediction across all iterations and its 95% confidence"
+#| fig.cap: "Receiver operating characteristic (ROC) curves from a random subset of out-of-bag bootstrap iterations, illustrating the model’s ability to discriminate between vegan and omnivore status based on standardized log2(lipid) levels. Each curve corresponds to an elastic net model trained on a bootstrap resample and evaluated on the subjects not included in that iteration (i.e., out-of-bag samples). The curve plots the true positive rate (sensitivity) against the false positive rate (1 – specificity) across thresholds of predicted vegan probability. The area under the curve (AUC) quantifies overall discriminatory performance, with values closer to 1 indicating stronger separation between groups."
+
 elanet_lipid_inter_CompletVal$plot
 ```
+
+
+$\rightarrow$ The observed performance (AUC ≈ 1) indicates near-perfect discrimination. Given the extremely strong signal in the lipidomic data—where several lipid levels show minimal overlap between diet groups—this result is plausible but may still raise concerns about overfitting or data leakage. To evaluate whether the observed performance could arise by chance under similar model complexity, we repeated the analysis using a dataset with randomly permuted diet labels (i.e., outcome reshuffling).
+
+## Sensitivity analysis
+
+```{r}
+#| fig.cap: "Receiver operating characteristic (ROC) curves from a random subset of out-of-bag bootstrap iterations run on **data with randomly permuted diet labels**. As above with original data, each curve corresponds to an elastic net model trained on a bootstrap resample and evaluated on the subjects not included in that iteration (i.e., out-of-bag samples). The curve plots the true positive rate (sensitivity) against the false positive rate (1 – specificity) across thresholds of predicted vegan probability. The area under the curve (AUC) quantifies overall discriminatory performance, with values closer to 1 indicating stronger separation between groups"
+
+## re-arrange data (permute outcome labels for sensitivity check
+set.seed(2025)
+data_lipids_glmnet_inter_CompletVal_sens <- data_lipids_glmnet_inter_CompletVal %>% 
+  mutate(vegan2 = sample(data_lipids_glmnet_inter_CompletVal$vegan))
+
+## verify I did what I wanted
+mean(data_lipids_glmnet_inter_CompletVal_sens$vegan)
+mean(data_lipids_glmnet_inter_CompletVal_sens$vegan2)
+
+data_lipids_glmnet_inter_CompletVal_sens[1:20, c("vegan", "vegan2")]
+
+## re-run as sensitivity analysis
+data_lipids_glmnet_inter_CompletVal_sens <- data_lipids_glmnet_inter_CompletVal_sens %>% 
+  select(-vegan)
+
+modelac <- "elanet_lipid_inter_CompletVal_sens"
+
+assign(
+  modelac,
+  run(
+    expr = clust_glmnet_sep(
+      data = data_lipids_glmnet_inter_CompletVal_sens,
+      outcome = "vegan2",
+      clust_id = "Sample",
+      sample_method = "oos_boot",
+      N = 40,
+      alphas = c(0, 0.2, 0.4),
+      family = "binomial",
+      seed = 478
+    ),
+    path = paste0("gitignore/run/", modelac)
+  )
+)
+
+elanet_lipid_inter_CompletVal_sens$model_summary
+elanet_lipid_inter_CompletVal_sens$country_AUC
+
+elanet_lipid_inter_CompletVal_sens$plot
+```
+
+$\rightarrow$ After randomly permuting diet labels and rerunning the full modelling pipeline, the out‑of‑sample AUC fell to 0.47 (95% CI: 0.34 to 0.59), consistent with chance performance and indicating no evidence of data leakage or systematic overfitting under label randomization.
 
 ## Estimated coefficients
 
@@ -971,7 +1021,9 @@ data_lipids_validation_pred_CompletVal <- data_lipids_validation %>%
     ) 
 ```
 
-### Result
+### Results of external validation
+
+#### Figure 
 
 ```{r}
 #| fig.cap: "Receiver operating characteristics (ROC) curve showing the model’s ability to discriminate between vegan and omnivore status according to lipids log2(level) in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
@@ -1023,6 +1075,55 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
     height = 4.5
   )
 }
+```
+
+#### Table
+
+```{r}
+
+roc_lipid_CompletVal
+mod <- elanet_lipid_inter_CompletVal
+
+trainAUC <- mean(mod[["valid_performances"]]$auc_resamp_test)
+trainCI <- quantile(mod[["valid_performances"]]$auc_resamp_test,
+  probs = c(1 / 40, 39 / 40))
+
+res <- data.frame(
+  alpha = c(mod$model_summary$alpha, rep("", 4)),
+  lambda = c(round(mod$model_summary$lambda, 4), rep("", 4)),
+  `performance type` = c(
+ "Training set AUC",
+"Out-of-sample AUC (all)",
+"Out-of-sample AUC (Czech)",
+"Out-of-sample AUC (Italy)",
+"External validation AUC"
+  ),
+  `performance [95% CI]` = c(
+    sprintf("%.3f [%.3f to %.3f]", trainAUC, trainCI[1], trainCI[2]),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$model_summary$auc_OutOfSample,
+            mod$model_summary$auc_oos_CIL,
+            mod$model_summary$auc_oos_CIU),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$country_AUC$auc_OutOfSample_CZ,
+            mod$country_AUC$auc_oos_CIL_CZ,
+            mod$country_AUC$auc_oos_CIU_CZ),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$country_AUC$auc_OutOfSample_IT,
+            mod$country_AUC$auc_oos_CIL_IT,
+            mod$country_AUC$auc_oos_CIU_IT),
+    sprintf("%.3f [%.3f to %.3f]",
+            roc_lipid_CompletVal[["ci"]][2],
+            roc_lipid_CompletVal[["ci"]][1],
+            roc_lipid_CompletVal[["ci"]][3])
+  )
+)
+
+
+kableExtra::kable(
+  res %>% mutate(across(where(is.numeric), ~ round(.x, 3))),
+  caption = 'Performance of the elastic‑net logistic regression model for discriminating vegan from omnivore status using log2‑transformed lipid levels. The model was developed on the combined training data (Czech and Italian cohorts), with the optimmized `alpha` (mixing parameter) and `lambda` (penalty strength) selected via 10-fold cross-validation. Internal validation employed 500 out‑of‑bag bootstrap resamples: the out‑of‑sample AUC is the mean across resamples, and its 95 % confidence interval (CI) is given by the 2.5th and 97.5th percentiles of the bootstrap distribution. The training‑set AUC and its CI were computed analogously from the in‑bag predictions. External validation was carried out on an independent Czech cohort; the reported AUC is the point estimate on that cohort, and its 95% CI was obtained with DeLong’s method.'
+)
 ```
 
 

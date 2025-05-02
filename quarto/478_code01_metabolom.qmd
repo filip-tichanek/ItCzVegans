@@ -11,7 +11,7 @@ format:
     toc-location: left
     number-sections: true
     number-depth: 4
-    code-fold: show
+    code-fold: true
     code-tools: true
     code-summary: "Open code"
     grid: 
@@ -542,10 +542,10 @@ elanet_metabolit_all$model_summary
 elanet_metabolit_all$country_AUC
 ```
 
-### Calibration plot
+### ROC curve - internal validation
 
 ```{r}
-#| fig.cap: "Calibration plot, showing outcomes value (y-axis) according to prediction of elastic net model (x-axis). Grey curves show predictions from different bootstrap iterations. Red lines and shadows show average prediction across all iterations and its 95% confidence"
+#| fig.cap: "Receiver operating characteristic (ROC) curves from a random subset of out-of-bag bootstrap iterations, illustrating the model’s ability to discriminate between vegan and omnivore status based on standardized log2(metabolite) levels. Each curve corresponds to an elastic net model trained on a bootstrap resample and evaluated on the subjects not included in that iteration (i.e., out-of-bag samples). The curve plots the true positive rate (sensitivity) against the false positive rate (1 – specificity) across thresholds of predicted vegan probability. The area under the curve (AUC) quantifies overall discriminatory performance, with values closer to 1 indicating stronger separation between groups."
 
 elanet_metabolit_all$plot
 ```
@@ -724,10 +724,12 @@ tr <- data_metabolites_validation_pred %>%
   )
 ```
 
-### Result of validation
+### Result of external validation
+
+#### ROC curve
 
 ```{r, fig.height=4.5, fig.width=6}
-#| fig.cap: "Receiver operating characteristics (ROC) curve showing the model’s ability to discriminate between vegan and omnivore status in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
+#| fig.cap: "Receiver operating characteristics (ROC) curve showing the model’s ability to discriminate between vegan and omnivore status in the external validation Czech cohort, based on log2-transformed metabolite levels. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
  
 roc_metabolite <- pROC::roc(
   vegan ~ predicted_logit,
@@ -739,7 +741,7 @@ roc_metabolite <- pROC::roc(
 
 roc_metabolite
 
-plotac <- "roc_metabolite"
+plotac <- "roc_metabolite_pl"
 path <- "gitignore/figures"
 
 assign(plotac, ggroc(roc_metabolite))
@@ -755,6 +757,54 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
   )
 }
 ```
+
+#### Table
+
+```{r}
+mod <- elanet_metabolit_all
+
+trainAUC <- mean(mod[["valid_performances"]]$auc_resamp_test)
+trainCI <- quantile(mod[["valid_performances"]]$auc_resamp_test,
+  probs = c(1 / 40, 39 / 40))
+
+res <- data.frame(
+  alpha = c(mod$model_summary$alpha, rep("", 4)),
+  lambda = c(round(mod$model_summary$lambda, 4), rep("", 4)),
+  `performance type` = c(
+ "Training set AUC",
+"Out-of-sample AUC (all)",
+"Out-of-sample AUC (Czech)",
+"Out-of-sample AUC (Italy)",
+"External validation AUC"
+  ),
+  `performance [95% CI]` = c(
+    sprintf("%.3f [%.3f to %.3f]", trainAUC, trainCI[1], trainCI[2]),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$model_summary$auc_OutOfSample,
+            mod$model_summary$auc_oos_CIL,
+            mod$model_summary$auc_oos_CIU),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$country_AUC$auc_OutOfSample_CZ,
+            mod$country_AUC$auc_oos_CIL_CZ,
+            mod$country_AUC$auc_oos_CIU_CZ),
+    sprintf("%.3f [%.3f to %.3f]",
+            mod$country_AUC$auc_OutOfSample_IT,
+            mod$country_AUC$auc_oos_CIL_IT,
+            mod$country_AUC$auc_oos_CIU_IT),
+    sprintf("%.3f [%.3f to %.3f]",
+            roc_metabolite[["ci"]][2],
+            roc_metabolite[["ci"]][1],
+            roc_metabolite[["ci"]][3])
+  )
+)
+
+
+kableExtra::kable(
+  res %>% mutate(across(where(is.numeric), ~ round(.x, 3))),
+  caption = 'Performance of the elastic‑net logistic regression model for discriminating vegan from omnivore status using log2‑transformed metabolite levels. The model was developed on the combined training data (Czech and Italian cohorts), with the optimmized `alpha` (mixing parameter) and `lambda` (penalty strength) selected via 10-fold cross-validation. Internal validation employed 500 out‑of‑bag bootstrap resamples: the out‑of‑sample AUC is the mean across resamples, and its 95 % confidence interval (CI) is given by the 2.5th and 97.5th percentiles of the bootstrap distribution. The training‑set AUC and its CI were computed analogously from the in‑bag predictions. External validation was carried out on an independent Czech cohort; the reported AUC is the point estimate on that cohort, and its 95% CI was obtained with DeLong’s method.'
+)
+```
+
 
 ## Diet effect across datasets (forest plot)
 

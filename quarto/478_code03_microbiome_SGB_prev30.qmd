@@ -11,7 +11,7 @@ format:
     toc-location: left
     number-sections: true
     number-depth: 4
-    code-fold: show
+    code-fold: true
     code-tools: true
     code-summary: "Open code"
     grid: 
@@ -69,7 +69,7 @@ body {
 ## Set home directory
 
 ```{r}
-setwd('/home/ticf/GitRepo/ticf/478_MOCA_italian')
+setwd('/home/ticf/secured_data/GitRepo/ticf/478_MOCA_italian')
 ```
 
 ## Upload initiation file
@@ -354,7 +354,7 @@ where $N_i$ is read count of $i$-th bacteria taxa
 The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.   
 This parameterization allows us to interpret the linear model `summary` output as presenting the conditional effects of `diet` averaged across both countries and the conditional effects of `country` averaged across both diet groups. We will then use the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
 
-Taxa that will show a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR < 0.1) will be then visualized using a forest plot, with country-specific diet effect along with diet effect based on independent validation cohort, to evaluate how generalizable these findings are (see external validation section).
+Taxa that will show a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR < 0.05) will be then visualized using a forest plot, with country-specific diet effect along with diet effect based on independent validation cohort, to evaluate how generalizable these findings are (see external validation section).
 
 
 Note that p-value for avg effects are the same as produced with `car::Anova(model, type = 'III')`.
@@ -635,11 +635,11 @@ elanet_microbiome_SGB30$model_summary
 elanet_microbiome_SGB30$country_AUC
 ```
 
-## Calibration plot
+## ROC curve - internal validation
 
 ```{r}
-#| fig.cap: "Calibration plot, showing outcomes value (y-axis) according to prediction of elastic net model (x-axis). Grey curves show predictions from different bootstrap iterations. Red lines and shadows show average prediction across all iterations and its 95% confidence"
-#| 
+#| fig.cap: "Receiver operating characteristic (ROC) curves from a random subset of out-of-bag bootstrap iterations, illustrating the model’s ability to discriminate between vegan and omnivore status based on standardized CLR-transformed count of bacteria reads. Each curve corresponds to an elastic net model trained on a bootstrap resample and evaluated on the subjects not included in that iteration (i.e., out-of-bag samples). The curve plots the true positive rate (sensitivity) against the false positive rate (1 – specificity) across thresholds of predicted vegan probability. The area under the curve (AUC) quantifies overall discriminatory performance, with values closer to 1 indicating stronger separation between groups."
+
 elanet_microbiome_SGB30$plot
 ```
 
@@ -811,12 +811,12 @@ data_microbiome_validation_pred_all <- data_microbiome_validation %>%
 
 ### Result
 
+#### ROC curve 
 
 ```{r}
-#| fig.cap: "Receiver Operating Characteristic (ROC) curve illustrating the model's ability to distinguish between vegan and omnivore status based on CLR-transformed bacterial taxa abundances in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
+#| fig.cap: "Receiver Operating Characteristic (ROC) curve illustrating the model's ability to distinguish between vegan and omnivore status based on CLR-transformed counts of bacteria reads in the external validation Czech cohort. The curve plots the true positive rate (sensitivity) against the true positive rate (specificity) at various thresholds of predicted vegan status, as estimated from the elastic net model developed on the training data. The area under the curve (AUC) represents the model's overall performance, with values closer to 1 indicating stronger discrimination."
 
-elanet_microbiome_SGB30$fit
-ggroc
+
 newx <- as.matrix(data_microbiome_validation_pred_all[,-1])
 
 predicted <- predict(
@@ -863,6 +863,61 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 }
 ```
 
+#### Table
+
+```{r}
+mod <- elanet_microbiome_SGB30
+
+trainAUC <- mean(mod[["valid_performances"]]$auc_resamp_test)
+trainCI <- quantile(mod[["valid_performances"]]$auc_resamp_test,
+  probs = c(1 / 40, 39 / 40)
+)
+
+res <- data.frame(
+  alpha = c(mod$model_summary$alpha, rep("", 4)),
+  lambda = c(round(mod$model_summary$lambda, 4), rep("", 4)),
+  `performance type` = c(
+    "Training set AUC",
+    "Out-of-sample AUC (all)",
+    "Out-of-sample AUC (Czech)",
+    "Out-of-sample AUC (Italy)",
+    "External validation AUC"
+  ),
+  `performance [95% CI]` = c(
+    sprintf("%.3f [%.3f to %.3f]", trainAUC, trainCI[1], trainCI[2]),
+    sprintf(
+      "%.3f [%.3f to %.3f]",
+      mod$model_summary$auc_OutOfSample,
+      mod$model_summary$auc_oos_CIL,
+      mod$model_summary$auc_oos_CIU
+    ),
+    sprintf(
+      "%.3f [%.3f to %.3f]",
+      mod$country_AUC$auc_OutOfSample_CZ,
+      mod$country_AUC$auc_oos_CIL_CZ,
+      mod$country_AUC$auc_oos_CIU_CZ
+    ),
+    sprintf(
+      "%.3f [%.3f to %.3f]",
+      mod$country_AUC$auc_OutOfSample_IT,
+      mod$country_AUC$auc_oos_CIL_IT,
+      mod$country_AUC$auc_oos_CIU_IT
+    ),
+    sprintf(
+      "%.3f [%.3f to %.3f]",
+      roc_microbiome_all[["ci"]][2],
+      roc_microbiome_all[["ci"]][1],
+      roc_microbiome_all[["ci"]][3]
+    )
+  )
+)
+
+
+kableExtra::kable(
+  res %>% mutate(across(where(is.numeric), ~ round(.x, 3))),
+  caption = "Performance of the elastic‑net logistic regression model for discriminating vegan from omnivore status using CLR-transformed counts of bacteria reads. The model was developed on the combined training data (Czech and Italian cohorts), with the optimmized `alpha` (mixing parameter) and `lambda` (penalty strength) selected via 10-fold cross-validation. Internal validation employed 500 out‑of‑bag bootstrap resamples: the out‑of‑sample AUC is the mean across resamples, and its 95 % confidence interval (CI) is given by the 2.5th and 97.5th percentiles of the bootstrap distribution. The training‑set AUC and its CI were computed analogously from the in‑bag predictions. External validation was carried out on an independent Czech cohort; the reported AUC is the point estimate on that cohort, and its 95% CI was obtained with DeLong’s method."
+)
+```
 
 ## Diet effect across datasets
 
@@ -1097,8 +1152,8 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 
 ### Boxplot
 
-```{r, fig.height=7, fig.width=7, warning=FALSE}
-#| fig.cap: "CLR-transformed taxa proportion across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
+```{r, fig.height=12, fig.width=9, warning=FALSE}
+#| fig.cap: "CLR-transformed count of bacteria reads across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
 
 plotac <- "boxplot_microbiome_SGB30"
 path <- "gitignore/figures"
@@ -1135,7 +1190,7 @@ plots <- map(diet_sensitive_taxa, boxplot_cond)
 
 # Create a matrix of plots
 assign(plotac, 
-       ggarrange(plotlist = plots, ncol = 3, nrow = 3,  common.legend = TRUE)
+       ggarrange(plotlist = plots, ncol = 5, nrow = 8,  common.legend = TRUE)
        )
 
 get(plotac)
@@ -1145,8 +1200,8 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
     path = paste0(path),
     filename = plotac,
     device = "svg",
-    width = 7,
-    height = 7
+    width = 9,
+    height = 12
   )
 }
 ```
