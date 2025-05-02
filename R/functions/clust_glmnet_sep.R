@@ -551,68 +551,104 @@ clust_glmnet_sep <- function(
 
   # calibration plot ----
 
- if (sample_method == "oos_boot") {
-   set.seed(seed)
-  #
-   calibration_plot <- suppressWarnings(
-     predictions2 %>%
-       dplyr::mutate(
-         iteration = factor("A"),
-         predicted = inv_logit(predicted)
-       ) %>%
-       ggplot2::ggplot(
-         ggplot2::aes(
-           x = predicted,
-           y = outcome,
-           group = iteration
-           )
-         ) +
-       ggplot2::geom_smooth(
-         data = predictions[factor(predictions$iteration) %in% factor(sample(1:N, 30)),],
-         aes(
-           x = inv_logit(predicted),
-           y = outcome
-         ),
-         se = FALSE,
-         color = "grey35",
-         linewidth = 0.1,
-         method = "loess",
-         span =  1.6/log10(nrow(predictions2)),
-         formula = 'y ~ x'
-       ) +
-       ggplot2::geom_smooth(
-         method = "loess",
-         se = TRUE,
-         color = "red",
-         fill = "red",
-         alpha = 0.25,
-         span = 1/log10(nrow(predictions2)),
-         formula = 'y ~ x'
-       ) +
-       ggplot2::coord_cartesian(
-         x = c(
-           min(
-             inv_logit(predictions$predicted)
-           ),
-           max(
-             inv_logit(predictions$predicted)
-           )
-         ),
-         y = c(0, 1)
-       ) +
-       ggplot2::geom_abline(
-         slope = 1,
-         intercept = 0,
-         linewidth = 1,
-         linetype = "dashed"
-       ) +
-       ggplot2::labs(
-         x = "Prediction",
-         y = "Outcome"
-       )
-   )
- }
+ # if (sample_method == "oos_boot") {
+ #   set.seed(seed)
+ #  #
+ #   calibration_plot <- suppressWarnings(
+ #     predictions2 %>%
+ #       dplyr::mutate(
+ #         iteration = factor("A"),
+ #         predicted = inv_logit(predicted)
+ #       ) %>%
+ #       ggplot2::ggplot(
+ #         ggplot2::aes(
+ #           x = predicted,
+ #           y = outcome,
+ #           group = iteration
+ #           )
+ #         ) +
+ #       ggplot2::geom_smooth(
+ #         data = predictions[factor(predictions$iteration) %in% factor(sample(1:N, 30)),],
+ #         aes(
+ #           x = inv_logit(predicted),
+ #           y = outcome
+ #         ),
+ #         se = FALSE,
+ #         color = "grey35",
+ #         linewidth = 0.1,
+ #         method = "loess",
+ #         span =  1.6/log10(nrow(predictions2)),
+ #         formula = 'y ~ x'
+ #       ) +
+ #       ggplot2::geom_smooth(
+ #         method = "loess",
+ #         se = TRUE,
+ #         color = "red",
+ #         fill = "red",
+ #         alpha = 0.25,
+ #         span = 1/log10(nrow(predictions2)),
+ #         formula = 'y ~ x'
+ #       ) +
+ #       ggplot2::coord_cartesian(
+ #         x = c(
+ #           min(
+ #             inv_logit(predictions$predicted)
+ #           ),
+ #           max(
+ #             inv_logit(predictions$predicted)
+ #           )
+ #         ),
+ #         y = c(0, 1)
+ #       ) +
+ #       ggplot2::geom_abline(
+ #         slope = 1,
+ #         intercept = 0,
+ #         linewidth = 1,
+ #         linetype = "dashed"
+ #       ) +
+ #       ggplot2::labs(
+ #         x = "Prediction",
+ #         y = "Outcome"
+ #       )
+ #   )
+ # }
 
+  if (sample_method == "oos_boot") {
+    set.seed(seed)
+    
+    predictions <- data.frame(predictions)
+    iterations_sample <- sample(unique(predictions$iteration), 20)
+    
+    # Filter data
+    predictions_sub <- predictions %>%
+      filter(iteration %in% iterations_sample)
+    
+    # Compute ROC objects per iteration
+    roc_df_list <- predictions_sub %>%
+      group_by(iteration) %>%
+      group_split() %>%
+      map(function(df) {
+        r <- roc(outcome ~ predicted, data = df, direction = "<", levels = c(0, 1))
+        tibble(
+          fpr = rev(1 - r$specificities),
+          tpr = rev(r$sensitivities),
+          iteration = unique(df$iteration)
+        )
+      })
+    
+    # Combine into one data frame
+    roc_df <- bind_rows(roc_df_list)
+    
+    # Plot as ggplot
+    calibration_plot <- ggplot(roc_df, aes(x = fpr, y = tpr, group = iteration)) +
+      geom_line(color = "gray30") +
+      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+      labs(
+        x = "False Positive Rate (1 - Specificity)",
+        y = "True Positive Rate (Sensitivity)",
+        title = "ROC curves from 20 bootstrap iterations"
+      ) 
+  }
 
   # define outputs ----
   
