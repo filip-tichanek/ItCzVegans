@@ -3249,7 +3249,8 @@ window.Quarto = {
   <li><a href="#statistical-methods-in-details" id="toc-statistical-methods-in-details" class="nav-link" data-scroll-target="#statistical-methods-in-details"><span class="header-section-number">1.2</span> Statistical Methods in details</a>
   <ul class="collapse">
   <li><a href="#linear-model-per-feature" id="toc-linear-model-per-feature" class="nav-link" data-scroll-target="#linear-model-per-feature"><span class="header-section-number">1.2.1</span> Linear model per feature</a></li>
-  <li><a href="#diet-prediction" id="toc-diet-prediction" class="nav-link" data-scroll-target="#diet-prediction"><span class="header-section-number">1.2.2</span> Diet prediction</a></li>
+  <li><a href="#linear-model-for-the-effect-of-vegan-diet-duration" id="toc-linear-model-for-the-effect-of-vegan-diet-duration" class="nav-link" data-scroll-target="#linear-model-for-the-effect-of-vegan-diet-duration"><span class="header-section-number">1.2.2</span> Linear model for the effect of vegan diet duration</a></li>
+  <li><a href="#diet-prediction" id="toc-diet-prediction" class="nav-link" data-scroll-target="#diet-prediction"><span class="header-section-number">1.2.3</span> Diet prediction</a></li>
   </ul></li>
   </ul></li>
   <li><a href="#reproducibility" id="toc-reproducibility" class="nav-link" data-scroll-target="#reproducibility"><span class="header-section-number">2</span> Reproducibility</a></li>
@@ -3303,22 +3304,24 @@ text-align: justify;
 </div>
 <p><strong>Authors and affiliations</strong></p>
 <div style="font-size: larger;">
-<p>Monika Cahova<sup>1,*</sup>, Anna Ouradova<sup>2,*</sup>, Giulio Ferrero<sup>3,4,*</sup>, Miriam Bratova<sup>1</sup>, Nikola Daskova<sup>1</sup>, Klara Dohnalova<sup>5</sup>, Marie Heczkova<sup>1</sup>, Karel Chalupsky<sup>5</sup>, Maria Kralova<sup>6,7</sup>, Marek Kuzma<sup>8</sup>, Filip Tichanek<sup>1</sup>, Lucie Najmanova<sup>8</sup>, Barbara Pardini<sup>10</sup>, Helena Pelantová<sup>8</sup>, Radislav Sedlacek<sup>5</sup>, Sonia Tarallo<sup>9</sup>, Petra Videnska<sup>10</sup>, Jan Gojda<sup>2,#</sup>, Alessio Naccarati<sup>9,#</sup></p>
+<p>Anna Ouradova<sup>1,*</sup>, Giulio Ferrero<sup>2,3,*</sup>, Miriam Bratova<sup>4</sup>, Nikola Daskova<sup>4</sup>, Alena Bohdanecka<sup>4,5</sup>, Klara Dohnalova<sup>6</sup>, Marie Heczkova<sup>4</sup>, Karel Chalupsky<sup>6</sup>, Maria Kralova<sup>7,8</sup>, Marek Kuzma<sup>9</sup>, István Modos<sup>4</sup>, Filip Tichanek<sup>4</sup>, Lucie Najmanova<sup>9</sup>, Barbara Pardini<sup>10</sup>, Helena Pelantová<sup>9</sup>, Sonia Tarallo<sup>10</sup>, Petra Videnska<sup>11</sup>, Jan Gojda<sup>1,#</sup>, Alessio Naccarati<sup>10,#</sup>, Monika Cahova<sup>4,#</sup></p>
 </div>
 <p><br></p>
 <p><sup>*</sup> These authors have contributed equally to this work and share first authorship<br>
 <sup>#</sup> These authors have contributed equally to this work and share last authorship</p>
-<p><sup>1</sup> Institute for Clinical and Experimental Medicine, Prague, Czech Republic<br>
-<sup>2</sup> Department of Internal Medicine, Kralovske Vinohrady University Hospital and Third Faculty of Medicine, Charles University, Prague, Czech Republic <sup>3</sup> Department of Clinical and Biological Sciences, University of Turin, Turin, Italy<br>
-<sup>4</sup> Department of Computer Science, University of Turin, Turin, Italy<br>
-<sup>5</sup> Czech Centre for Phenogenomics, Institute of Molecular Genetics of the Czech Academy of Sciences, Prague, Czech Republic<br>
-<sup>6</sup> Ambis University, Department of Economics and Management, Prague, Czech Republic<br>
-<sup>7</sup> Department of Applied Mathematics and Computer Science, Masaryk University, Brno, Czech Republic<br>
-<sup>8</sup> Institute of Microbiology of the Czech Academy of Sciences, Prague, Czech Republic<br>
-<sup>9</sup> Italian Institute for Genomic Medicine (IIGM), c/o IRCCS Candiolo, Turin, Italy<br>
-<sup>10</sup> Mendel University, Department of Chemistry and Biochemistry, Brno, Czech Republic</p>
+<p><sup>1</sup> Department of Internal Medicine, Kralovske Vinohrady University Hospital and Third Faculty of Medicine, Charles University, Prague, Czech Republic<br>
+<sup>2</sup> Department of Clinical and Biological Sciences, University of Turin, Turin, Italy<br>
+<sup>3</sup> Department of Computer Science, University of Turin, Turin, Italy<br>
+<sup>4</sup> Institute for Clinical and Experimental Medicine, Prague, Czech Republic<br>
+<sup>5</sup> First Faculty of Medicine, Charles University, Prague, Czech Republic<br>
+<sup>6</sup> Czech Centre for Phenogenomics, Institute of Molecular Genetics of the Czech Academy of Sciences, Prague, Czech Republic<br>
+<sup>7</sup> Ambis University, Department of Economics and Management, Prague, Czech Republic<br>
+<sup>8</sup> Department of Informatics, Brno University of Technology, Brno, Czech Republic<br>
+<sup>9</sup> Institute of Microbiology of the Czech Academy of Sciences, Prague, Czech Republic<br>
+<sup>10</sup> Italian Institute for Genomic Medicine (IIGM), c/o IRCCS Candiolo, Turin, Italy<br>
+<sup>11</sup> Mendel University, Department of Chemistry and Biochemistry, Brno, Czech Republic</p>
 <hr>
-<p>This is a statistical report of the study <em>Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations</em> that is currenlty <em>under review</em></p>
+<p>This is a statistical report of the study <em>A vegan diet signature from a multi-omics study on different European populations is related to favorable metabolic outcomes</em> that is currenlty <em>under review</em></p>
 <p>When using this code or data, cite the original publication:</p>
 <blockquote class="blockquote">
 <p>TO BE ADDED</p>
@@ -3341,10 +3344,10 @@ text-align: justify;
 <p>The statistical modeling approach is described in detail in <a href="https://filip-tichanek.github.io/ItCzVegans/html_reports/478_code04_methods.html">this report</a>. Briefly, the methods used included:</p>
 <ul>
 <li><p><strong>Multivariate analysis</strong>: We conducted multivariate analyses (PERMANOVA, PCA, correlation analyses) to explore the effects of <code>diet</code>, <code>country</code>, and their possible interaction (<code>diet : country</code>) on the microbiome, lipidome, and metabolome compositions in an integrative manner. This part of the analysis is not available on the GitHub page, but the code will be provided upon request.</p></li>
-<li><p><strong>Linear models</strong>: Linear models were applied to estimate the effects of <code>diet</code>, <code>country</code>, and their interaction (<code>diet:country</code>) on individual lipids, metabolites, bacterial taxa and pathways (“features”). Features that significantly differed between diet groups (based on the estimated average conditional effect of diet across both countries, adjusted for multiple comparisons with FDR &lt; 0.05) were further examined in the independent external validation cohort to assess whether these associations were reproducible.</p></li>
+<li><p><strong>Linear models</strong>: Linear models were applied to estimate the effects of <code>diet</code>, <code>country</code>, and their interaction (<code>diet:country</code>) on individual lipids, metabolites, bacterial taxa and pathways (“features”). Features that significantly differed between diet groups (based on the estimated average conditional effect of diet across both countries, adjusted for multiple comparisons with FDR &lt; 0.05) were further examined in the independent external validation cohort to assess whether these associations were reproducible. Next, we fit linear models restricted to vegan participants to test whether omics profiles varied with the duration of vegan diet. Fixed-effect predictors were diet duration (per 10 years), country, their interaction, and age (included due to correlation with diet duration).</p></li>
 <li><p><strong>Predictive models (elastic net)</strong>: We employed elastic net logistic regression (via the <code>glmnet</code> R package) to predict vegan status based on metabolome, lipidome, microbiome and pathways data (one model per dataset; four models in total). We considered three combinations of Lasso and Ridge penalties (alpha = 0, 0.2, 0.4). For each alpha, we selected the penalty strength (λ<sub>1se</sub>) using 10-fold cross-validation. This value corresponds to the most regularized model whose performance was within one standard error of the minimum deviance. The alpha–lambda pair with the lowest deviance was chosen to fit the final model, whose coefficients are reported.<br>
 To estimate model performance, we repeated the full modeling procedure (including hyperparameter tuning) 500 times on bootstrap resamples of the training data. In each iteration, the model was trained on the resampled data and evaluated on the out-of-bag subjects (i.e., those not included in the training set in that iteration). The mean, and 2.5th, and 97.5th percentiles of the resulting ROC-AUC values represent the estimated out-of-sample AUC and its 95% confidence interval.<br>
-Finally, the final model was applied to an independent validation cohort to generate predicted probabilities of vegan status. These probabilities were then used to assess external discrimination between diet groups (ROC-AUC in the independent validation cohort).</p></li>
+Finally, the final model was applied to an independent validation cohort to generate predicted probabilities of vegan status. These probabilities were then used to assess external discrimination between diet groups (ROC-AUC in the independent validation cohort). The elastic net models were not intended for practical prediction, but to quantify the strength of the signal separating the dietary groups, with its uncertainty, by using all features of a given dataset jointly. It also offered a complementary perspective on which features are most clearly associated with diet</p></li>
 </ul>
 </section>
 <section id="statistical-methods-in-details" class="level2" data-number="1.2">
@@ -3361,9 +3364,17 @@ g(\text{outcome}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times 
 This parameterization allowed us to interpret the linear model summary as presenting the average conditional effects of <code>diet</code> across both countries and the average conditional effects of <code>country</code> across both diet groups. We then used the <code>emmeans</code> package <span class="citation" data-cites="emmeans-2">(<a href="#ref-emmeans-2" role="doc-biblioref">Lenth 2024</a>)</span> to obtain specific estimates for the effect of <code>diet</code> in the Italian and Czech cohorts separately, still from a single model.</p>
 <p>Features that showed a significant diet effect (average effect of <code>diet</code> across both countries, adjusted for multiple comparisons with FDR &lt; 0.05) were then visualized using a forest plot. The plot displayed the estimated difference in the level of given feature between vegan and omnivorous subject, and 95% confidence intervals across all three cohorts (Czech and Italian training cohorts, as well as the Czech external validation cohort) separately to evaluate whether found associations of given feature with diet can be generalized to other datasets.</p>
 </section>
-<section id="diet-prediction" class="level3" data-number="1.2.2">
-<h3 data-number="1.2.2" class="anchored" data-anchor-id="diet-prediction"><span class="header-section-number">1.2.2</span> Diet prediction</h3>
-<p>To assess the predictive power of lipidome, metabolome, microbiome, and pathway-related features on diet strategy, we employed elastic net logistic regression using the <code>glmnet</code> R package <span class="citation" data-cites="glmnet">(<a href="#ref-glmnet" role="doc-biblioref">Friedman, Tibshirani, and Hastie 2010</a>)</span>, combined with a <a href="https://github.com/filip-tichanek/ItCzVegans/blob/main/R/functions/clust_glmnet.R">custom validation function</a> for internal validation using bootstrap. Separate models were fitted for each dataset (lipidome, metabolome, microbiome, pathways).</p>
+<section id="linear-model-for-the-effect-of-vegan-diet-duration" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="linear-model-for-the-effect-of-vegan-diet-duration"><span class="header-section-number">1.2.2</span> Linear model for the effect of vegan diet duration</h3>
+<p>Next, we fit another series of linear models, this time modelling omics profiles using the following fixed-effect predictors: duration of vegan status (<code>Diet_duration</code>, scaled in tens of years), <code>Country</code>, their interaction (<code>Diet_duration × Country</code>), and <code>Age</code>:</p>
+<p><span class="math display">\[
+\text{CLR(pathway proportion)} = \alpha + \beta_{1} \times \text{Country} + \beta_{2} \times \text{Diet duration} + \beta_{3} \times (\text{Country}:\text{Diet duration}) + \beta_{4} \times \text{Age} + \epsilon
+\]</span></p>
+<p>This analysis includes only vegan participants, while omnivores are excluded. The aim was to test whether omics features differ between vegans and omnivores also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive features compared to those who adopted the diet more recently. Because longer vegan duration correlates with the vegan diet duration, we also adjusted for age in the models.</p>
+</section>
+<section id="diet-prediction" class="level3" data-number="1.2.3">
+<h3 data-number="1.2.3" class="anchored" data-anchor-id="diet-prediction"><span class="header-section-number">1.2.3</span> Diet prediction</h3>
+<p>To explore whether omics profiles contain a consistent signal differentiating dietary groups, we applied elastic net logistic regression to each dataset (metabolome, lipidome, microbiome, pathways) using the <code>glmnet</code> R package <span class="citation" data-cites="glmnet">(<a href="#ref-glmnet" role="doc-biblioref">Friedman, Tibshirani, and Hastie 2010</a>)</span>, combined with a <a href="https://github.com/filip-tichanek/ItCzVegans/blob/main/R/functions/clust_glmnet.R">custom validation function</a> for internal validation using bootstrap. Separate models were fitted for each dataset (lipidome, metabolome, microbiome, pathways).</p>
 <p>Due to the expected high collinearity among features, we limited the search for the mixing parameter <span class="math inline">\(alpha\)</span> to rather smaller values (0, 0.2, 0.4). All features were standardized to have <span class="math inline">\(mean = 0\)</span> and <span class="math inline">\(standard deviation = 0.5\)</span> using the <code>arm</code> R package <span class="citation" data-cites="arm">(<a href="#ref-arm" role="doc-biblioref">Gelman and Su 2021</a>)</span> to ensure scale comparability.</p>
 <p>Models were first evaluated for out-of-sample performance using an out-of-bag bootstrap approach (500 iterations). Predictive performance was quantified using the out-of-sample area under the ROC curve (AUC; internal validation), estimated via the <code>pROC</code> package <span class="citation" data-cites="pROC">(<a href="#ref-pROC" role="doc-biblioref">Robin et al. 2011</a>)</span>. AUC was estimated for both cohorts combined and for each country separately. Final external validation was performed on an independent Czech cohort (external validation).</p>
 <p>The modelling and validation procedure involved the following steps:</p>
@@ -3382,6 +3393,7 @@ This parameterization allowed us to interpret the linear model summary as presen
 <li><p>For each subject in the external cohort, the final model returned a <em>predicted probability of being vegan</em> (a continuous score between 0 and 1).</p></li>
 <li><p>This predicted probability was treated as the discrimination variable: by varying the threshold across its full range, we obtained sensitivity and specificity pairs from which the ROC curve and its AUC were computed. This AUC reflects the model’s ability to generalize to an independent cohort.</p></li>
 </ol>
+<p>The models were not intended for practical prediction, but to quantify the strength of the signal separating the dietary groups, with its uncertainty, by using all features of a given dataset jointly. It also offered a complementary perspective on which features are most clearly associated with diet</p>
 </section>
 </section>
 </section>
@@ -3414,10 +3426,10 @@ This parameterization allowed us to interpret the linear model summary as presen
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="do">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="do">## </span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="do">## loaded via a namespace (and not attached):</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="do">##  [1] htmlwidgets_1.6.4 compiler_4.4.3    fastmap_1.2.0     cli_3.6.3        </span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="do">##  [5] tools_4.4.3       htmltools_0.5.8.1 yaml_2.3.5        rmarkdown_2.27   </span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="do">##  [9] knitr_1.48        jsonlite_1.8.8    xfun_0.46         digest_0.6.37    </span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="do">## [13] rlang_1.1.4       evaluate_1.0.0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="do">##  [1] htmlwidgets_1.6.4 compiler_4.4.3    fastmap_1.2.0     cli_3.6.5        </span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="do">##  [5] tools_4.4.3       htmltools_0.5.8.1 yaml_2.3.10       rmarkdown_2.27   </span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="do">##  [9] knitr_1.50        jsonlite_2.0.0    xfun_0.52         digest_0.6.37    </span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="do">## [13] rlang_1.1.6       evaluate_1.0.4</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <!-- -->
@@ -4006,44 +4018,55 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a>Features that showed a significant diet effect (average effect of <span class="in">`diet`</span> across both countries, adjusted for multiple comparisons with FDR <span class="sc">\&lt;</span> 0.05) were then visualized using a forest plot. The plot displayed the estimated difference in the level of given feature between vegan and omnivorous subject, and 95% confidence intervals across all three cohorts (Czech and Italian training cohorts, as well as the Czech external validation cohort) separately to evaluate whether found associations of given feature with diet can be generalized to other datasets.</span>
 <span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a><span class="fu">### Diet prediction</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a><span class="fu">### Linear model for the effect of vegan diet duration</span></span>
 <span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a>To assess the predictive power of lipidome, metabolome, microbiome, and pathway-related features on diet strategy, we employed elastic net logistic regression using the <span class="in">`glmnet`</span> R package <span class="co">[</span><span class="ot">@glmnet</span><span class="co">]</span>, combined with a <span class="co">[</span><span class="ot">custom validation function</span><span class="co">](https://github.com/filip-tichanek/ItCzVegans/blob/main/R/functions/clust_glmnet.R)</span> for internal validation using bootstrap. Separate models were fitted for each dataset (lipidome, metabolome, microbiome, pathways).</span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a>Next, we fit another series of linear models, this time modelling omics profiles using the following fixed-effect predictors: duration of vegan status (<span class="in">`Diet_duration`</span>, scaled in tens of years), <span class="in">`Country`</span>, their interaction (<span class="in">`Diet_duration × Country`</span>), and <span class="in">`Age`</span>:</span>
 <span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>Due to the expected high collinearity among features, we limited the search for the mixing parameter $alpha$ to rather smaller values (0, 0.2, 0.4). All features were standardized to have $mean = 0$ and $standard deviation = 0.5$ using the <span class="in">`arm`</span> R package <span class="co">[</span><span class="ot">@arm</span><span class="co">]</span> to ensure scale comparability.</span>
-<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>Models were first evaluated for out-of-sample performance using an out-of-bag bootstrap approach (500 iterations). Predictive performance was quantified using the out-of-sample area under the ROC curve (AUC; internal validation), estimated via the <span class="in">`pROC`</span> package <span class="co">[</span><span class="ot">@pROC</span><span class="co">]</span>. AUC was estimated for both cohorts combined and for each country separately.  Final external validation was performed on an independent Czech cohort (external validation).</span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a>\text{CLR(pathway proportion)} = \alpha + \beta_{1} \times \text{Country} + \beta_{2} \times \text{Diet duration} + \beta_{3} \times (\text{Country}:\text{Diet duration}) + \beta_{4} \times \text{Age} + \epsilon</span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>$$</span>
 <span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a>The modelling and validation procedure involved the following steps:</span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a>This analysis includes only vegan participants, while omnivores are excluded. The aim was to test whether omics features differ between vegans and omnivores also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive features compared to those who adopted the diet more recently. Because longer vegan duration correlates with the vegan diet duration, we also adjusted for age in the models.</span>
 <span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>*Training and internal validation*</span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a><span class="fu">### Diet prediction</span></span>
 <span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>For each alpha (0, 0.2, 0.4), the <span class="in">`cv.glmnet`</span> function was used to perform 10-fold cross-validation on the training data, using the default <span class="in">`glmnet`</span> lambda sequence. For each alpha, we selected <span class="in">`lambda.1se`</span>, corresponding to the most regularized model whose cross-validated deviance was within one standard error of the minimum. The alpha–lambda pair with the lowest deviance was chosen.</span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a>To explore whether omics profiles contain a consistent signal differentiating dietary groups, we applied elastic net logistic regression to each dataset (metabolome, lipidome, microbiome, pathways) using the <span class="in">`glmnet`</span> R package <span class="co">[</span><span class="ot">@glmnet</span><span class="co">]</span>, combined with a <span class="co">[</span><span class="ot">custom validation function</span><span class="co">](https://github.com/filip-tichanek/ItCzVegans/blob/main/R/functions/clust_glmnet.R)</span> for internal validation using bootstrap. Separate models were fitted for each dataset (lipidome, metabolome, microbiome, pathways).</span>
 <span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>The final model was fitted on the full training set using <span class="in">`glmnet`</span> with the selected alpha and lambda values.</span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a>Due to the expected high collinearity among features, we limited the search for the mixing parameter $alpha$ to rather smaller values (0, 0.2, 0.4). All features were standardized to have $mean = 0$ and $standard deviation = 0.5$ using the <span class="in">`arm`</span> R package <span class="co">[</span><span class="ot">@arm</span><span class="co">]</span> to ensure scale comparability.</span>
 <span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>To estimate internal performance, the entire modelling procedure (including tuning) was repeated 500 times on bootstrap resamples of the training data. For each resample, the optimal alpha and lambda were re-selected.</span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a>Models were first evaluated for out-of-sample performance using an out-of-bag bootstrap approach (500 iterations). Predictive performance was quantified using the out-of-sample area under the ROC curve (AUC; internal validation), estimated via the <span class="in">`pROC`</span> package <span class="co">[</span><span class="ot">@pROC</span><span class="co">]</span>. AUC was estimated for both cohorts combined and for each country separately.  Final external validation was performed on an independent Czech cohort (external validation).</span>
 <span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>The model was trained on each bootstrap resample, and AUC was calculated on the out-of-bag subjects (i.e., those not included in that iteration&#39;s training set). This yielded 500 out-of-sample AUC estimates.</span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a>The modelling and validation procedure involved the following steps:</span>
 <span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>The median, 2.5th, and 97.5th percentiles of the AUCs were reported to summarize internal out-of-sample performance and its 95% confidence interval.</span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a>*Training and internal validation*</span>
 <span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a>*External validation*</span>
+<span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>For each alpha (0, 0.2, 0.4), the <span class="in">`cv.glmnet`</span> function was used to perform 10-fold cross-validation on the training data, using the default <span class="in">`glmnet`</span> lambda sequence. For each alpha, we selected <span class="in">`lambda.1se`</span>, corresponding to the most regularized model whose cross-validated deviance was within one standard error of the minimum. The alpha–lambda pair with the lowest deviance was chosen.</span>
 <span id="cb2-107"><a href="#cb2-107" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-108"><a href="#cb2-108" aria-hidden="true" tabindex="-1"></a><span class="ss">6. </span>External validation cohort data were standardized using the means and standard deviations of the training cohort to ensure consistent scaling.</span>
+<span id="cb2-108"><a href="#cb2-108" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>The final model was fitted on the full training set using <span class="in">`glmnet`</span> with the selected alpha and lambda values.</span>
 <span id="cb2-109"><a href="#cb2-109" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-110"><a href="#cb2-110" aria-hidden="true" tabindex="-1"></a><span class="ss">7. </span>The final model (fitted once on the full training data) was applied to the external validation cohort to generate predicted probabilities of vegan status.</span>
+<span id="cb2-110"><a href="#cb2-110" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>To estimate internal performance, the entire modelling procedure (including tuning) was repeated 500 times on bootstrap resamples of the training data. For each resample, the optimal alpha and lambda were re-selected.</span>
 <span id="cb2-111"><a href="#cb2-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-112"><a href="#cb2-112" aria-hidden="true" tabindex="-1"></a><span class="ss">8. </span>For each subject in the external cohort, the final model returned a *predicted probability of being vegan* (a continuous score between 0 and 1).  </span>
+<span id="cb2-112"><a href="#cb2-112" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>The model was trained on each bootstrap resample, and AUC was calculated on the out-of-bag subjects (i.e., those not included in that iteration&#39;s training set). This yielded 500 out-of-sample AUC estimates.</span>
 <span id="cb2-113"><a href="#cb2-113" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-114"><a href="#cb2-114" aria-hidden="true" tabindex="-1"></a><span class="ss">9. </span>This predicted probability was treated as the discrimination variable: by varying the threshold across its full range, we obtained sensitivity and specificity pairs from which the ROC curve and its AUC were computed. This AUC reflects the model&#39;s ability to generalize to an independent cohort.</span>
+<span id="cb2-114"><a href="#cb2-114" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>The median, 2.5th, and 97.5th percentiles of the AUCs were reported to summarize internal out-of-sample performance and its 95% confidence interval.</span>
 <span id="cb2-115"><a href="#cb2-115" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-116"><a href="#cb2-116" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-117"><a href="#cb2-117" aria-hidden="true" tabindex="-1"></a><span class="fu"># Reproducibility</span></span>
-<span id="cb2-118"><a href="#cb2-118" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-119"><a href="#cb2-119" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, collapse=TRUE}</span></span>
-<span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a><span class="in">sessionInfo()</span></span>
-<span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
+<span id="cb2-116"><a href="#cb2-116" aria-hidden="true" tabindex="-1"></a>*External validation*</span>
+<span id="cb2-117"><a href="#cb2-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-118"><a href="#cb2-118" aria-hidden="true" tabindex="-1"></a><span class="ss">6. </span>External validation cohort data were standardized using the means and standard deviations of the training cohort to ensure consistent scaling.</span>
+<span id="cb2-119"><a href="#cb2-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a><span class="ss">7. </span>The final model (fitted once on the full training data) was applied to the external validation cohort to generate predicted probabilities of vegan status.</span>
+<span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-122"><a href="#cb2-122" aria-hidden="true" tabindex="-1"></a><span class="ss">8. </span>For each subject in the external cohort, the final model returned a *predicted probability of being vegan* (a continuous score between 0 and 1).  </span>
+<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-124"><a href="#cb2-124" aria-hidden="true" tabindex="-1"></a><span class="ss">9. </span>This predicted probability was treated as the discrimination variable: by varying the threshold across its full range, we obtained sensitivity and specificity pairs from which the ROC curve and its AUC were computed. This AUC reflects the model&#39;s ability to generalize to an independent cohort.</span>
+<span id="cb2-125"><a href="#cb2-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-126"><a href="#cb2-126" aria-hidden="true" tabindex="-1"></a>The models were not intended for practical prediction, but to quantify the strength of the signal separating the dietary groups, with its uncertainty, by using all features of a given dataset jointly. It also offered a complementary perspective on which features are most clearly associated with diet</span>
+<span id="cb2-127"><a href="#cb2-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-128"><a href="#cb2-128" aria-hidden="true" tabindex="-1"></a><span class="fu"># Reproducibility</span></span>
+<span id="cb2-129"><a href="#cb2-129" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, collapse=TRUE}</span></span>
+<span id="cb2-131"><a href="#cb2-131" aria-hidden="true" tabindex="-1"></a><span class="in">sessionInfo()</span></span>
+<span id="cb2-132"><a href="#cb2-132" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
