@@ -95,8 +95,25 @@ names(data_lipids_original)
 
 ### Validation set
 
+! Note that later part of summary revealed a discrepancy between diet labels from different data sources (see table below). Incorrect labels will be manually corrected in the following code chunk.
+
+  Sample  Diet GRP Diet_duration
+1   K130 VEGAN  OM          <NA>
+2   K127 VEGAN  OM          <NA>
+3   K126 VEGAN  OM          <NA>
+4   K124 VEGAN  OM          <NA>
+5   K119  OMNI  VN          0.17
+6   K104  OMNI  VN             9
+7   K101  OMNI  VN            12
+8   K100  OMNI  VN             9
+
 ```{r}
 data_lipids_validation <- read.csv('gitignore/data/KOMPAS_data_lipid.csv')
+
+data_lipids_validation[1:20, 1:5]
+data_lipids_validation[1:10, 
+                       (nrow(data_lipids_validation)-10):nrow(data_lipids_validation) 
+                       ]
 
 data_lipids_validation <- data_lipids_validation %>%
   select(-Class) %>%                           # Remove 'Class' column
@@ -106,6 +123,14 @@ data_lipids_validation <- data_lipids_validation %>%
   mutate(X2 = if_else(grepl('VG', rownames(.)), 'VEGAN', 'OMNI')) %>% 
   select(X2, everything()) %>% 
   mutate(across(`ACar 16:0` : `TG 54:6`, ~ as.numeric(.)))
+
+data_lipids_validation[
+  which(grepl('K104|K119|K101|K100', row.names(data_lipids_validation))), 'X2'
+  ] <- 'VEGAN'
+
+data_lipids_validation[
+  which(grepl('K124|K126|K127|K130', row.names(data_lipids_validation))), 'X2'
+  ] <- 'OMNI'
 
 data_lipids_validation %>% summary()
 data_lipids_validation[1:5, ]
@@ -312,7 +337,7 @@ log_{2}(\text{lipid level}) = \alpha + \beta_{1} \times \text{country} + \beta_{
 $$
 
 The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.   
-This parameterization allows us to interpret the linear model `summary` output as presenting the conditional effects of `diet` averaged across both countries and the conditional effects of `country` averaged across both diet groups. We will then use the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
+This parameterization allows us to interpret the linear model `summary` output as presenting the conditional effects of `diet` averaged across both countries and the conditional effects of `country` averaged across both diet groups. We will then use the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model with the `country x diet` interaction.
 
 Lipids that will show a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR < 0.05) will be then visualized using a forest plot, with country-specific diet effect along with diet effect based on independent validation cohort, to evaluate how generalizable these findings are. 
 
@@ -550,12 +575,13 @@ result_lipidom <- result_lipidom %>%
 
 ```{r}
 kableExtra::kable(result_lipidom %>% filter(fdr_VGdiet_avg < 0.05),
-  caption = "Result of linear models, modelling the log2-transformed level of given lipid, with `Diet`, `Country` and `Diet:Country` interaction as predictors. Only the lipids that differed significantly between diets are shown (FDR<0.05, average effect over both coutnries). `log2FD` prefix: implies estimated effects (regression coefficient), i.e. how much log2-transformed lipid level differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+  caption = "Results of linear models, modeling the log2-transformed level of a given lipid with `Diet`, `Country`, and `Diet:Country` interaction as fixed-effect predictors. Only lipids with significantly different levels between diet groups are shown (FDR < 0.05, average effect across both countries). `log2FD` prefix: denotes estimated effects (regression coefficients), i.e., how much log2-transformed lipid levels differ in vegans compared to omnivores, and between Italian and Czech cohorts, respectively; `P`: p-value; `fdr`: p-value after adjustment for multiple comparisons; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval, respectively. `avg` suffix denotes effects averaged across subgroups, whereas `inCZ` and `inIT` denote effects in the Czech or Italian cohort, respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of a vegan diet between Italian and Czech cohorts; positive values indicate a stronger effect in the Italian, negative values a stronger effect in the Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model"
 )
 
-if (file.exists("gitignore/result_lipidom.csv") == FALSE) {
+
+if (file.exists("gitignore/lm_results/result_lipidom.csv") == FALSE) {
   write.table(result_lipidom,
-    "gitignore/result_lipidom.csv",
+    "gitignore/lm_results/result_lipidom.csv",
     row.names = FALSE
   )
 }
@@ -726,12 +752,12 @@ result_lipidom_narrowed <- result_lipidom_narrowed %>%
 
 ```{r}
 kableExtra::kable(result_lipidom_narrowed %>% filter(fdr_VGdiet_avg < 0.05),
-                  caption = "Result of linear models, modelling the log2-transformed level of given lipid, with `Diet`, `Country` and `Diet:Country` interaction as predictors. Only lipids which differ between diets significantly are shown (FDR < 0.05, average effect across both countries). `log2FD` prefix: implies estimated effects (regression coefficient), i.e. how much log2-transformed lipid level differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+                  caption = "Results of linear models, modeling the log2-transformed level of a given lipid with `Diet`, `Country`, and `Diet:Country` interaction as fixed-effect predictors. Only lipids with significantly different levels between diet groups are shown (FDR < 0.05, average effect across both countries). `log2FD` prefix: denotes estimated effects (regression coefficients), i.e., how much log2-transformed lipid levels differ in vegans compared to omnivores, and between Italian and Czech cohorts, respectively; `P`: p-value; `fdr`: p-value after adjustment for multiple comparisons; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval, respectively. `avg` suffix denotes effects averaged across subgroups, whereas `inCZ` and `inIT` denote effects in the Czech or Italian cohort, respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of a vegan diet between Italian and Czech cohorts; positive values indicate a stronger effect in the Italian, negative values a stronger effect in the Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model"
                   ) 
 
-if(file.exists('gitignore/result_lipidom_narrowed.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_lipidom_narrowed.csv') == FALSE){
   write.table(result_lipidom_narrowed, 
-              'gitignore/result_lipidom_narrowed.csv', 
+              'gitignore/lm_results/result_lipidom_narrowed.csv', 
               row.names = FALSE)
   }
 ```
@@ -743,8 +769,6 @@ To assess the predictive power of lipidome features on diet strategy, we employe
 As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized by 2 standard deviations.
 
 The performance of the predictive model was evaluated through their capacity of discriminate between vegan and omnivore diets, using out-of-sample area under ROC curve (AUC; estimated with out-of-bag bootstrap) as the measure of discriminatory capacity.
-
-All features were transformed by 2 standard deviations (resulting in standard deviation of 0.5).
 
 ## Prepare data for `glmnet`
 
@@ -1225,10 +1249,11 @@ result_lipids_val <- data.frame(
 )
 
 kableExtra::kable(result_lipids_val,
-                  caption = 'Results of linear models estimating the effect of diet on lipid levels. Only lipids that significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `log2FD` represents the estimated effects (regression coefficient), indicating how much the log2-transformed lipid levels differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model.') 
+                  caption = 'Results of linear models estimating the effect of diet on lipid levels. Only lipids that significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `log2FD` denotes the estimated effects (regression coefficient), indicating how much the log2-transformed lipid levels differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model') 
 
-if(file.exists('gitignore/result_lipidom_validation.csv') == FALSE){
-  write.table(result_lipids_val, 'gitignore/result_lipidom_validation.csv', row.names = FALSE)
+if(file.exists('gitignore/lm_results/result_lipidom_validation.csv') == FALSE){
+  write.table(result_lipids_val, 
+              'gitignore/lm_results/result_lipidom_validation.csv', row.names = FALSE)
   }
 ```
 
@@ -1271,8 +1296,9 @@ data_forest <- data.frame(
 )
 
 validation_order <- data_forest %>%
-  filter(dataset == "Validation") %>%
-  arrange(beta) %>%
+  group_by(outcome) %>%
+  summarise(beta_mean = mean(beta), .groups = "drop") %>%
+  arrange(beta_mean) %>%
   pull(outcome)
 
 up_winners <- data_forest %>% 
@@ -1311,7 +1337,7 @@ winners <- as.character(c(up_winners$outcome, down_winners$outcome))
 #### Plotting
 
 ```{r, fig.height=16, fig.width=6}
-#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the levels of selected log2-transformed lipid lelves, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Points/lines in green, blue and grey colors represent the difference in lipid levels between vegans and omnivores within the Italian, Czech and validation cohort respectively. Positive values suggest a higher lipid level in vegans compared to omnivores. Only lipids that showed significant differences between vegan and omnivorous diets in training cohorts (FDR < 0.05, average effect across both countries) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the validation cohort, `Diet` was the only fixed-effect predictor. Lipids validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
+#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the levels of selected log2-transformed lipid lelves, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Points/lines in green, blue and grey colors represent the difference in lipid levels between vegans and omnivores within the Italian, Czech and validation cohort respectively. Positive values suggest a higher lipid level in vegans compared to omnivores. Only lipids that showed significant differences between vegan and omnivorous diets in training cohorts (FDR < 0.05, average effect across both countries) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet x Country` as fixed-effect predictors. In the validation cohort, `Diet` was the only fixed-effect predictor. Lipids validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
 
 colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
 
@@ -1418,6 +1444,587 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 }
 ```
 
+
+# Linear model VG duration 
+
+Next, we fit another series of linear models, this time modelling log2 lipid levels using the following fixed-effect predictors: duration of vegan status (`Diet_duration`, scaled in tens of years), `country`, their interaction (`Diet_duration × country`), and `age`:
+
+$$
+\log_{2}(\text{lipid level}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet duration} + \beta_{3} \times (\text{country}:\text{diet duration}) + \epsilon
+$$
+
+This analysis includes only vegan participants, while omnivores are excluded. The goal was to examine whether metabolites that differ between vegans and non-vegans also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive metabolites compared to those who adopted the diet more recently.
+
+Because longer vegan duration is likely correlated with age (e.g. a 20-year-old cannot have 20 years of vegan history, unlike a 40-year-old), we also adjusted for age in the models.
+
+## Get data
+
+### Training
+
+```{r}
+meta_trainIT <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 1)
+meta_trainCZ <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 2) %>% 
+  dplyr::mutate(ID = paste0('T', ID),
+                Sex = SEX) %>% 
+  dplyr::select(-SEX)
+
+meta_trainIT[1:5,]
+meta_trainCZ[1:5,]
+data_meta_original <- bind_rows(meta_trainIT, meta_trainCZ) %>% 
+  rename(`Sample` = `ID`)
+  
+data_meta_original[1:5,]
+
+data_lipid_original2 <- data_lipids_original %>% 
+  left_join(data_meta_original, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:Sex, everything())
+
+data_lipid_original2 %>% dim()
+
+data_lipid_original2[
+  1:4, 
+  (ncol(data_lipid_original2)-10):ncol(data_lipid_original2)
+  ]
+
+data_lipid_original2[1:4, 1:10]
+
+```
+
+### Validation
+
+```{r}
+data_meta_valid <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 3) %>% 
+  rename(`Sample` = `ID`)
+
+data_lipid_valid2 <- data_lipids_validation %>% 
+  mutate(Sample = row.names(.)) %>% select(Sample, everything()) %>% 
+  rename(`Diet` = `X2`) %>% 
+  mutate(Sample = str_extract(Sample, "K[0-9]+")) %>% 
+  select(Sample, Diet, everything()) %>% 
+  left_join(data_meta_valid, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:SEX, dplyr::everything())
+
+data_lipid_valid2 %>% dim()
+
+data_lipid_valid2[
+  1:4, 
+  (ncol(data_lipid_valid2)-10):ncol(data_lipid_valid2)
+  ]
+
+data_lipid_valid2[1:4, 1:10]
+
+data_lipid_valid2 %>% select(Sample, Diet, GRP)
+
+data_lipid_valid2 %>% select(Sample, Diet, GRP, Diet_duration) %>% 
+  filter(
+    (Diet == 'VEGAN' & GRP == 'OM') | (Diet == 'OMNI' & GRP == 'VN')
+  )
+```
+
+
+## Training cohort
+
+### Select data 
+
+```{r}
+data_analysis <- data_lipid_original2 %>%
+    mutate(Country_IT = as.numeric(
+      dplyr::if_else(
+        Country == "IT", 0.5, -0.5
+      )
+    )
+  ) %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>% 
+  select(Sample:Group, Country_IT, all_of(diet_sensitive_lipids_narrowed)) %>% 
+  as.data.frame()
+
+summary(data_analysis[ , 1:11])
+```
+
+
+### Age vs Diet duration correlation
+
+```{r, fig.width=8, fig.height=4.2}
+#| fig.cap: 'Scatterplots of age versus diet duration, stratified by country, with only vegans included. Each panel shows individual data points together with a locally weighted regression line (LOESS, 95% confidence band). The left panel corresponds to the Czech training cohort (CZ_train) and the right panel to the Italian training cohort (IT_train). Within each cohort, the strength and direction of the association between age and diet duration were quantified using Spearman’s rank correlation coefficient (rho). The estimated rho values and corresponding p-values are displayed inside each panel'
+
+cors <- data_analysis %>%
+  group_by(COHORT) %>%
+  summarise(
+    test = list(cor.test(Age, Diet_duration, method = "spearman")),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    rho = map_dbl(test, ~ .x$estimate),
+    pval = map_dbl(test, ~ .x$p.value),
+    label = paste0("rho = ", round(rho, 2),
+                   ", p = ", signif(pval, 2))
+  )
+
+ggplot(data_analysis, aes(x = Age, y = Diet_duration)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~ COHORT) +
+  geom_text(
+    data = cors,
+    aes(x = Inf, y = Inf, label = label),
+    inherit.aes = FALSE,
+    hjust = 2.4, vjust = 1.5
+  )
+```
+
+
+### Define number of lipid and covariates
+
+```{r}
+n_covarites <- 10
+n_features <- ncol(data_analysis) - n_covarites
+```
+
+### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+
+logFD_Diet_duration_inCZ <- vector('double', n_features)
+logFD_Diet_duration_inIT <- vector('double', n_features)
+logFD_Diet_duration_avg <- vector('double', n_features)
+
+logFD_ITcountry_avg <- vector('double', n_features)
+diet_country_int <- vector('double', n_features)
+
+P_Diet_duration_inCZ <- vector('double', n_features)
+P_Diet_duration_inIT <- vector('double', n_features)
+P_Diet_duration_avg <- vector('double', n_features)
+
+P_ITcountry_avg <- vector('double', n_features)
+P_diet_country_int <- vector('double', n_features)
+
+logFD_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+
+CI_L_Diet_duration_inCZ <- vector('double', n_features)
+CI_L_Diet_duration_inIT <- vector('double', n_features)
+CI_L_Diet_duration_avg <- vector('double', n_features)
+
+CI_U_Diet_duration_inCZ <- vector('double', n_features)
+CI_U_Diet_duration_inIT <- vector('double', n_features)
+CI_U_Diet_duration_avg <- vector('double', n_features)
+```
+
+### Estimate over outcomes
+
+```{r}
+if(file.exists('gitignore/lm_results/result_lipid_VGdur_training.Rds') == FALSE){
+for (i in 1:n_features) {
+  
+  ## define variable
+  data_analysis$outcome <- data_analysis[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Country_IT * Diet_duration + Age, 
+              data = data_analysis %>% 
+                mutate(Diet_duration = (Diet_duration/10),
+                       outcome = trans_lipid(outcome),
+                       Age = (Age-33)/10))
+
+  ## get contrast (effects of diet BY COUNTRY)
+  contrast_emm <- summary(
+    pairs(
+      emmeans(
+        model,
+        specs = ~ Diet_duration | Country_IT,
+        at = list(Diet_duration = c(0, 1)) 
+        ),
+      interaction = TRUE,
+      adjust = "none"
+      ),
+    infer = c(TRUE, TRUE)
+    )
+
+  ## save results
+  outcome[i] <- names(data_analysis)[i + n_covarites]
+  
+  ## country and age effect
+  logFD_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 1
+  ]
+
+  P_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 4
+  ]
+  
+  logFD_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+  
+  ## diet effect
+  tr <- confint(model)
+  
+  CI_L_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][1]
+  CI_U_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][2]
+  
+  logFD_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+  
+  logFD_Diet_duration_inCZ[i] <- -contrast_emm[1,3]
+  P_Diet_duration_inCZ[i] <- contrast_emm$p.value[1]
+  CI_L_Diet_duration_inCZ[i] <- -contrast_emm$upper.CL[1]
+  CI_U_Diet_duration_inCZ[i] <- -contrast_emm$lower.CL[1]
+  
+  logFD_Diet_duration_inIT[i] <- -contrast_emm[2,3]
+  P_Diet_duration_inIT[i] <- contrast_emm$p.value[2]
+  CI_L_Diet_duration_inIT[i] <- -contrast_emm$upper.CL[2]
+  CI_U_Diet_duration_inIT[i] <- -contrast_emm$lower.CL[2]
+  
+  ## interaction
+  diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 1
+  ]
+
+  P_diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 4
+  ]
+}
+
+  result_lipid <- data.frame(
+  outcome,
+  logFD_ITcountry_avg, P_ITcountry_avg,
+  logFD_Age, P_Age,
+  logFD_Diet_duration_avg, P_Diet_duration_avg,
+  logFD_Diet_duration_inCZ, P_Diet_duration_inCZ,
+  logFD_Diet_duration_inIT, P_Diet_duration_inIT,
+  diet_country_int, P_diet_country_int,
+  CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+  CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+  CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+)
+  
+  saveRDS(result_lipid, 
+              'gitignore/lm_results/result_lipid_VGdur_training.Rds')
+}
+
+result_lipid <- readRDS('gitignore/lm_results/result_lipid_VGdur_training.Rds')
+```
+
+
+
+### Show and save results
+
+```{r}
+kableExtra::kable(result_lipid %>% 
+  dplyr::select(
+    outcome,
+    logFD_ITcountry_avg, P_ITcountry_avg,
+    logFD_Age, P_Age,
+    logFD_Diet_duration_avg, P_Diet_duration_avg,
+    logFD_Diet_duration_inCZ, P_Diet_duration_inCZ,
+    logFD_Diet_duration_inIT, P_Diet_duration_inIT,
+    diet_country_int, P_diet_country_int,
+    CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+    CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+    CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+  ) %>% arrange(P_Diet_duration_avg),
+  caption = "Results of linear models, modelling the log2-transformed level of given lipid with vegan status duration (`Diet_duration`), `Country`, their interaction (`Diet_duration × Country`) and `Age` as predictors, using training data only (Czech and Italian vegan cohorts). Only lipids whose log2-transformed levels differ between diet in training cohorts (FDR < 0.05, average diet effect across both countries) are shown. `logFD` prefix: denotes estimated effects (regression coefficients), i.e. expected change in log2 lipid level per 10 years of vegan diet or age, or for country (Italy vs Czechia). `P`: p-value, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` show effect in Czech or Italian cohort respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet duration between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model with interaction",
+  escape = FALSE
+)
+
+
+if(file.exists('gitignore/lm_results/result_lipid_VGdur_training.csv') == FALSE){
+  write.table(result_lipid, 
+              'gitignore/lm_results/result_lipid_VGdur_training.csv', row.names = FALSE)
+  }
+```
+
+
+## Validation cohort
+
+```{r}
+data_analysis_lipid <- data_lipid_valid2 %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>%
+  dplyr::mutate(Diet_duration = as.numeric(as.character(Diet_duration))) %>% 
+  dplyr::select(
+    Diet_duration, Age,
+    all_of(diet_sensitive_lipids_narrowed)
+  )
+
+summary(data_analysis_lipid[ , 1:11])
+```
+
+#### Define number of lipid and covariates
+
+```{r}
+n_covarites <- 2
+n_features <- ncol(data_analysis_lipid) - n_covarites
+```
+
+#### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+logFD_VGduration <- vector('double', n_features)
+P_VGduration <- vector('double', n_features)
+logFD_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+CI_L_VGduration <- vector('double', n_features)
+CI_U_VGduration <- vector('double', n_features)
+```
+
+#### Estimate over outcomes
+
+```{r}
+for (i in 1:n_features) {
+  ## define variable
+  data_analysis_lipid$outcome <- data_analysis_lipid[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Diet_duration + Age, 
+              data = data_analysis_lipid %>% 
+                mutate(Diet_duration = (Diet_duration)/10,
+                       outcome = trans_lipid(outcome),
+                       Age = (Age-33)/10))
+
+  ## save results
+  outcome[i] <- names(data_analysis_lipid)[i + n_covarites]
+
+  ## diet effect
+  tr <- confint(model)
+
+  CI_L_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][1]
+  CI_U_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][2]
+
+  logFD_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+  
+    logFD_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+}
+```
+
+#### Results table
+
+```{r}
+result_lipid_val <- data.frame(
+  outcome,
+  logFD_VGduration, P_VGduration,
+  CI_L_VGduration, CI_U_VGduration,
+  logFD_Age, P_Age
+)
+
+kableExtra::kable(result_lipid_val,
+  caption = "Results of linear models estimating the effect of vegan diet status duration and age on log2-trasformed lipid levels in Czech validation cohort. Only lipids lipids with significantly different levels between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `logFD` denotes estimated effects (regression coefficient), i.e. expected change in log2 lipid level per +10 years of vegan diet and age, respectively. `P`: p-value, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model"
+)
+
+if (file.exists("gitignore/lm_results/result_lipids_VGdur_valid.csv") == FALSE) {
+  write.table(result_lipid_val,
+    "gitignore/lm_results/result_lipids_VGdur_valid.csv",
+    row.names = FALSE
+  )
+}
+```
+
+## Forest plot
+
+### Prepare data
+
+```{r}
+
+## subset result tables
+result_lipid_subset <- result_lipid %>%
+  filter(outcome %in% diet_sensitive_lipids_narrowed)
+
+result_lipid_val_subset <- result_lipid_val %>%
+  filter(outcome %in% diet_sensitive_lipids_narrowed)
+
+## create a data frame
+data_forest <- data.frame(
+  outcome = rep(diet_sensitive_lipids_narrowed, 3),
+  beta = c(
+    result_lipid_subset$logFD_Diet_duration_inCZ,
+    result_lipid_subset$logFD_Diet_duration_inIT,
+    result_lipid_val_subset$logFD_VGduration
+  ),
+  lower = c(
+    result_lipid_subset$CI_L_Diet_duration_inCZ,
+    result_lipid_subset$CI_L_Diet_duration_inIT,
+    result_lipid_val_subset$CI_L_VGduration
+  ),
+  upper = c(
+    result_lipid_subset$CI_U_Diet_duration_inCZ,
+    result_lipid_subset$CI_U_Diet_duration_inIT,
+    result_lipid_val_subset$CI_U_VGduration
+  ),
+  dataset = c(
+    rep("CZ", len),
+    rep("IT", len),
+    rep("Validation", len)
+  )
+)
+
+
+ data_forest <- data_forest %>%
+  mutate(in_winner = if_else(outcome %in% winners, TRUE, FALSE, missing = FALSE)) %>%
+  left_join(
+    elacoef %>% mutate(outcome = lipid) %>% select(-lipid), 
+    by = 'outcome') %>% 
+   mutate(outcome = factor(outcome, levels = validation_order))
+```
+
+#### Plotting
+
+```{r, fig.height=16, fig.width=7}
+#| fig.cap: "Forest plot shows the effect of vegan status duration (within the vegan sub-population) on log2-transformed levels of selected lipids, with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in log2 lipid level per +10 years of vegan diet within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher lipid levels in long-term vegans compared to short-term vegans. Only lipids with significant differences between vegans and omnivores in training cohorts (average effect over the two countries) were included. Estimates for the training cohorts come from a single linear model with `Diet_duration`, `Country`, their interaction (`Diet_duration x Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive lipids are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences"
+
+
+plotac <- "forest_plot_lipid_VGduration"
+path <- "gitignore/figures"
+
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+assign(plotac, ggplot(
+  data_forest, aes(x = outcome, y = beta, ymin = lower, ymax = upper, color = dataset)
+) +
+  geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+  geom_hline(yintercept = 0, color = "black") +
+  geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+  scale_color_manual(values = colors) +
+  labs(
+    y = "Effect of vegan duration (+10y) on log2 lipid level",
+    x = "Outcome",
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  scale_x_discrete(
+    labels = setNames(
+      ifelse(data_forest$in_winner, 
+             paste0("**", data_forest$outcome, "**"), 
+             as.character(data_forest$outcome)
+      ), data_forest$outcome
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = ggtext::element_markdown(size = 10),  
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 7,
+    height = 16
+  )
+}
+
+```
+
+## Lipids changing with vegan diet duration
+
+```{r}
+kableExtra::kable(
+  result_lipid %>%
+    filter(P_Diet_duration_avg < 0.05) %>%
+    select(
+      outcome, P_Diet_duration_avg,
+      logFD_Diet_duration_inCZ, logFD_Diet_duration_inIT
+    ) %>%
+    left_join(result_lipid_val, by = "outcome") %>%
+    select(
+      outcome, P_Diet_duration_avg, P_VGduration,
+      logFD_Diet_duration_inCZ, logFD_Diet_duration_inIT, logFD_VGduration
+    ) %>%
+    arrange(P_VGduration) %>% 
+    rename(
+      `P[VG duration, train]` = `P_Diet_duration_avg`,
+      `P[VG duration, val]` = `P_VGduration`,
+      `logFD[VGduration, CZ` = `logFD_Diet_duration_inCZ`,
+      `logFD[VGduration, IT` = `logFD_Diet_duration_inIT`,
+      `logFD[VGduration, val]` = `logFD_VGduration`
+    ),
+  caption = 'Lipids associated with the duration of a vegan diet in the training (Czech and Italian) and validation cohorts. Columns show p-values for the effect of vegan diet duration in training (`train`, average effect across both training cohorts) and validation data (`val`), together with log2 fold changes per +10 years of vegan diet within the Czech, Italian, and validation cohorts. Only lipids with significant associations with diet (FDR < 0.05) were included in the analyses, and only those with a significant association with vegan diet duration in training cohorts (p-value for the average effect across both countries < 0.05) are shown')
+
+```
+
+
+
+$\Rightarrow$ Some lipids, especially a few strongly related to an omnivorous diet, appear to be negatively associated with the duration on a vegan diet. The lower tail of the lipids (those on the bottom of the forest plot, i.e., those with the strongest negative association with the vegan diet) tends to be negatively associated with the duration of the vegan diet in vegans. 
+
+Specifically:
+
+`SM 43:1;O2` and `SM 33:1;O2`: Significant `Diet duration` effect (averaged over both countries), consistent and also statistically significant in the validation cohort. and also statistically significant in the validation cohort.
+
+`TG 16:0_18:1_22:6`, `PC 37:6`, `PC 14:0_17:0`, `SM 43:2;O2 (2)`, `PC 33:1`, `PC 15:0_20:3` and `SM 36:0;O2`: Significant `Diet duration` effect (averaged over both countries), consistent but not statistically significant in the validation cohort.
+
+## Age vs vegan diet duration
+
+Lets look on detailed results for the two omnivores-related lipids whose level decreases with the duration of the vegan diet
+
+```{r}
+
+kableExtra::kable(
+  result_lipid %>% filter(grepl("SM 33:1;O2|SM 43:1;O2", outcome)),
+  caption = 'Results of linear models, modelling the log2-transformed level of given lipid with vegan status duration (`Diet_duration`), `Country`, their interaction (`Diet_duration × Country`) and `Age` as predictors, using training data only (Czech and Italian vegan cohorts). Only the effect on the two omnivores-related lipids whose level decreases with the duration of the vegan diet are shown. Look above for the full table (all lipids) and detailed table description'
+  )
+
+kableExtra::kable(
+  result_lipid_val %>% filter(grepl("SM 33:1;O2|SM 43:1;O2", outcome)),
+  caption = 'Results of linear models, modelling the log2-transformed level of given lipid with vegan status duration (`Diet_duration`) and `Age` as predictors, using data from the validation cohort. Only the effect on the two omnivores-related lipids whose level decreases with the duration of the vegan diet are shown. Look above for the full table (all lipids) and detailed table description'
+  )
+```
+
+$\Rightarrow$ Level of these lipids is affected with age in training cohort but not in the validation cohort 
 
 # Reproducibility
 

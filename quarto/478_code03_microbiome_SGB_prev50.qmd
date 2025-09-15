@@ -160,7 +160,7 @@ metadata <- data_microbiome_original_raw[, c("Sample", "Country", "Diet")]
 
 bacteria_d <- data_microbiome_original_raw[, -c(1:4)] %>% 
   mutate(across(everything(), as.numeric)) %>% 
-  select(where(~ mean(. != 0) >= 0.3)) 
+  select(where(~ mean(. != 0) >= 0.5)) 
 
 dim(data_microbiome_original_raw[, -c(1:4)])
 dim(bacteria_d)
@@ -180,9 +180,9 @@ bacteria_data <- lrSVD(bacteria_data,
 clr_bacteria_data <- clr(bacteria_data)
 data_microbiome_original <- cbind(metadata, clr_bacteria_data)
 
-if(file.exists('gitignore/data_microbiome_SGB30_training_impCLR.csv') == FALSE){
+if(file.exists('gitignore/data_microbiome_SGB50_training_impCLR.csv') == FALSE){
   write.csv(data_microbiome_original ,
-            'gitignore/data_microbiome_SGB30_training_impCLR.csv')
+            'gitignore/data_microbiome_SGB50_training_impCLR.csv')
 }
 
 ## Show variances of CLR proportions across samples
@@ -225,13 +225,11 @@ data_microbiome_validation[
 
 data_microbiome_validation$`Wujia_chipingensis|SGB5111`
 
-# data_microbiome_validation <- data_microbiome_validation %>% 
-#   rename("Wujia_chipingenss|SGB5111" = "Wujia_chipingensis|SGB5111")
 
 
-if(file.exists('gitignore/data_microbiome_SGB30_validation_impCLR.csv') == FALSE){
+if(file.exists('gitignore/data_microbiome_SGB50_validation_impCLR.csv') == FALSE){
   write.csv(data_microbiome_validation,
-            'gitignore/data_microbiome_SGB30_validation_impCLR.csv')
+            'gitignore/data_microbiome_SGB50_validation_impCLR.csv')
 }
 ```
 
@@ -259,8 +257,6 @@ tr2 <- data_microbiome_validation %>%
 
 data_merged <- bind_rows(tr1, tr2)
 
-data_microbiome_validation$`Wujia_chipingenss|SGB5111`
-data_microbiome_validation$`Wujia_chipingensis|SGB5111`
 ```
 
 
@@ -563,9 +559,9 @@ kableExtra::kable(result_microbiome %>% filter(fdr_VGdiet_avg < 0.05),
   caption = "Results of linear models, modeling the CLR-transformed relative abundance of a given taxon as the outcome, with `Diet`, `Country`, and `Diet x Country` interaction as fixed-effect predictors. Only taxa whose CLR-transformed relative abundance differs between diets (FDR < 0.05, average diet effect across both countries) are shown. `est` prefix: denotes estimated effects (regression coefficients), i.e., how much CLR-transformed relative abundance differs in vegans compared to omnivores and in the Italian cohort vs. the Czech cohort, respectively; `P`: p-value; `fdr`: p-value after adjustment for multiple comparisons; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. `avg` suffix denotes effects averaged across subgroups, whereas `inCZ` and `inIT` denote effects in the Czech or Italian cohort, respectively. Interaction effects are reported as `diet_country_int` (difference in the effects of a vegan diet between the Italian and Czech cohorts; positive values indicate a stronger effect in the Italian, negative values a stronger effect in the Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model"
 )
 
-if(file.exists('gitignore/lm_results/result_microbiome_SGB30.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_microbiome_SGB50.csv') == FALSE){
   write.table(result_microbiome, 
-              'gitignore/lm_results/result_microbiome_SGB30.csv', row.names = FALSE)
+              'gitignore/lm_results/result_microbiome_SGB50.csv', row.names = FALSE)
 }
 
 dim(result_microbiome %>% filter(fdr_VGdiet_avg < 0.05))
@@ -613,7 +609,7 @@ data_microbiome_glmnet <- data_microbiome_original %>%
 ## Fit model
 
 ```{r}
-modelac <- "elanet_microbiome_SGB30"
+modelac <- "elanet_microbiome_SGB50"
 
 assign(
   modelac,
@@ -636,8 +632,8 @@ assign(
 ## Model summary
 
 ```{r}
-elanet_microbiome_SGB30$model_summary
-elanet_microbiome_SGB30$country_AUC
+elanet_microbiome_SGB50$model_summary
+elanet_microbiome_SGB50$country_AUC
 ```
 
 ## ROC curve - internal validation
@@ -645,7 +641,7 @@ elanet_microbiome_SGB30$country_AUC
 ```{r}
 #| fig.cap: "Receiver operating characteristic (ROC) curves from a random subset of out-of-bag bootstrap iterations, illustrating the model’s ability to discriminate between vegan and omnivore status based on standardized CLR-transformed count of bacteria reads. Each curve corresponds to an elastic net model trained on a bootstrap resample and evaluated on the subjects not included in that iteration (i.e., out-of-bag samples). The curve plots the true positive rate (sensitivity) against the false positive rate (1 – specificity) across thresholds of predicted vegan probability. The area under the curve (AUC) quantifies overall discriminatory performance, with values closer to 1 indicating stronger separation between groups."
 
-elanet_microbiome_SGB30$plot
+elanet_microbiome_SGB50$plot
 ```
 
 ## Estimated coefficients
@@ -653,17 +649,17 @@ elanet_microbiome_SGB30$plot
 ```{r}
 data.frame(
   microbiome = row.names(
-    elanet_microbiome_SGB30$betas
+    elanet_microbiome_SGB50$betas
     )[
       which(
         abs(
-          elanet_microbiome_SGB30$betas
+          elanet_microbiome_SGB50$betas
           )>0
         )
       ],
-  beta = elanet_microbiome_SGB30$betas[
+  beta = elanet_microbiome_SGB50$betas[
     abs(
-      elanet_microbiome_SGB30$betas
+      elanet_microbiome_SGB50$betas
       )>0
     ]
   ) %>% 
@@ -678,19 +674,19 @@ data.frame(
 
 ## Plot beta coefficients
 
-```{r, fig.height=14, fig.width=6}
+```{r, fig.height=10, fig.width=7}
 #| fig.cap: "Regression coefficients from the elastic net model predicting vegan diet strategy based on CLR-transformed and standardized proportion of bacterial taxa. Taxa are ordered by the magnitude of the standardized coefficients, indicating their relative importance in distinguishing between the diet groups. The sign of each coefficient indicates the direction of association with vegan diet status, with positive values indicating a higher likelihood of vegan status and negative values indicating omnivore status. Taxa whose effects were shrunk to zero are not shown."
 
 elacoef <- data.frame(
-  microbiome = row.names(elanet_microbiome_SGB30$betas),
-  beta_ela = elanet_microbiome_SGB30$betas[, 1]
+  microbiome = row.names(elanet_microbiome_SGB50$betas),
+  beta_ela = elanet_microbiome_SGB50$betas[, 1]
 ) %>%
   arrange(abs(beta_ela)) %>%
   filter(abs(beta_ela) > 0,
          !grepl('Intercept', microbiome)) %>%
   mutate(microbiome = factor(microbiome, levels = microbiome)) 
 
-plotac <- "elanet_beta_microbiome_SGB30"
+plotac <- "elanet_beta_microbiome_SGB50"
 path <- "gitignore/figures"
 
 assign(plotac, 
@@ -746,7 +742,7 @@ In a 2nd step, we will look at taxa that significantly differed between diet gro
 
 coefs_microbiome_all <- get_coef(
   original_data = data_analysis,
-  glmnet_model = elanet_microbiome_SGB30)
+  glmnet_model = elanet_microbiome_SGB50)
 
 coefs_microbiome_all
 
@@ -825,14 +821,14 @@ data_microbiome_validation_pred_all <- data_microbiome_validation %>%
 newx <- as.matrix(data_microbiome_validation_pred_all[,-1])
 
 predicted <- predict(
-  elanet_microbiome_SGB30$fit, 
+  elanet_microbiome_SGB50$fit, 
   newx = newx)
 
 tr <- data_microbiome_validation_pred_all %>% 
   dplyr::mutate(
     predicted_logit = as.numeric(
       predict(
-        elanet_microbiome_SGB30$fit,
+        elanet_microbiome_SGB50$fit,
         newx = newx
         )
       )
@@ -851,7 +847,7 @@ roc_microbiome_all <- pROC::roc(
 
 roc_microbiome_all
 
-plotac <- "roc_microbiom_SGB30"
+plotac <- "roc_microbiom_SGB50"
 path <- "gitignore/figures"
 
 assign(plotac, ggroc(roc_microbiome_all))
@@ -871,7 +867,7 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 #### Table
 
 ```{r}
-mod <- elanet_microbiome_SGB30
+mod <- elanet_microbiome_SGB50
 
 trainAUC <- mean(mod[["valid_performances"]]$auc_resamp_test)
 trainCI <- quantile(mod[["valid_performances"]]$auc_resamp_test,
@@ -1015,9 +1011,9 @@ kableExtra::kable(result_microbiome_val,
   caption = "Results of linear models estimating the effect of diet on the CLR-transformed relative abundance of a given taxon as the outcome. Only taxa whose relative abundance significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `est` represents the estimated effects (regression coefficient), indicating how much the CLR-transformed relative abundnace of a given differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model"
 )
 
-if (file.exists("gitignore/lm_results/result_microbiom_validation_SGB30.csv") == FALSE) {
+if (file.exists("gitignore/lm_results/result_microbiom_validation_SGB50.csv") == FALSE) {
   write.table(result_microbiome_val,
-    "gitignore/lm_results/result_microbiom_validation_SGB30.csv",
+    "gitignore/lm_results/result_microbiom_validation_SGB50.csv",
     row.names = FALSE
   )
 }
@@ -1104,10 +1100,10 @@ winners <- c(up_winners, down_winners)
 
 #### Plotting
 
-```{r, fig.height=13, fig.width=9}
+```{r, fig.height=5, fig.width=8}
 #| fig.cap: "The forest plot illustrates the effects of a vegan diet on the CLR-transformed relative abundances of selected taxa, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in CLR-transformed relative abundance between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher relative abundance in vegans compared to omnivores. Only taxa whose relative abundances differed between vegan and omnivores (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet x Country` as fixed-effect predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Taxa validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
 
-plotac <- "forest_plot_microbiome_SGB30"
+plotac <- "forest_plot_microbiome_SGB50"
 path <- "gitignore/figures"
 
 colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
@@ -1150,8 +1146,8 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
     path = paste0(path),
     filename = plotac,
     device = "svg",
-    width = 9,
-    height = 13
+    width = 8,
+    height = 5
   )
 }
 
@@ -1159,10 +1155,10 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 
 ### Boxplot
 
-```{r, fig.height=12, fig.width=9, warning=FALSE}
+```{r, fig.height=7, fig.width=7, warning=FALSE}
 #| fig.cap: "CLR-transformed relative abundances of selected taxa across all 3 cohorts (Czech and Italian training cohorts and an independent Czech valdiation cohort) and across dietary groups"
 
-plotac <- "boxplot_microbiome_SGB30"
+plotac <- "boxplot_microbiome_SGB50"
 path <- "gitignore/figures"
 
 colo <- c('#F9FFAF','#329243')
@@ -1197,7 +1193,7 @@ plots <- map(diet_sensitive_taxa, boxplot_cond)
 
 # Create a matrix of plots
 assign(plotac, 
-       ggarrange(plotlist = plots, ncol = 5, nrow = 8,  common.legend = TRUE)
+       ggarrange(plotlist = plots, ncol = 3, nrow = 3,  common.legend = TRUE)
        )
 
 get(plotac)
@@ -1214,6 +1210,7 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 ```
 
 # Linear model VG duration 
+
 
 Next, we fit another series of linear models, this time modelling clr-transformed taxa proportions (derived from shotgun metagenomic sequencing) using the following fixed-effect predictors: duration of vegan status (`Diet_duration`, scaled in tens of years), `Country`, their interaction (`Diet_duration × Country`), and `Age`:
 
@@ -1278,11 +1275,6 @@ data_microbiome_valid2[
 data_microbiome_valid2[1:4, 1:10]
 
 data_microbiome_valid2 %>% select(Sample, Diet, GRP)
-
-data_microbiome_valid2 %>% select(Sample, Diet, GRP, Diet_duration) %>% 
-  filter(
-    (Diet == 'VEGAN' & GRP == 'OM') | (Diet == 'OMNI' & GRP == 'VN')
-  )
 ```
 
 
@@ -1325,6 +1317,7 @@ est_ITcountry_avg <- vector('double', n_features)
 diet_country_int <- vector('double', n_features)
 
 est_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
 
 P_Diet_duration_inCZ <- vector('double', n_features)
 P_Diet_duration_inIT <- vector('double', n_features)
@@ -1332,8 +1325,6 @@ P_Diet_duration_avg <- vector('double', n_features)
 
 P_ITcountry_avg <- vector('double', n_features)
 P_diet_country_int <- vector('double', n_features)
-
-P_Age <- vector('double', n_features)
 
 CI_L_Diet_duration_inCZ <- vector('double', n_features)
 CI_L_Diet_duration_inIT <- vector('double', n_features)
@@ -1347,129 +1338,107 @@ CI_U_Diet_duration_avg <- vector('double', n_features)
 ### Estimate over outcomes
 
 ```{r}
-if(file.exists('gitignore/lm_results/result_microbiome_SGB30_VGdur_training.Rds') == FALSE){
-for (i in 1:n_features) {
-  
-  ## define variable
-  data_analysis$outcome <- data_analysis[, (i + n_covarites)]
+if (file.exists(
+  "gitignore/lm_results/result_microbiome_SGB50_VGdur_training.Rds"
+) == FALSE) {
+  for (i in 1:n_features) {
+    ## define variable
+    data_analysis$outcome <- data_analysis[, (i + n_covarites)]
 
-  ## fit model
-  model <- lm(outcome ~ Country_IT * Diet_duration + Age, 
-              data = data_analysis %>% 
-                mutate(Diet_duration = (Diet_duration/10),
-                       Age = (Age-33)/10))
-
-  ## get contrast (effects of diet BY COUNTRY)
-  contrast_emm <- summary(
-    pairs(
-      emmeans(
-        model,
-        specs = ~ Diet_duration | Country_IT,
-        at = list(Diet_duration = c(0, 1)) 
-        ),
-      interaction = TRUE,
-      adjust = "none"
-      ),
-    infer = c(TRUE, TRUE)
+    ## fit model
+    model <- lm(outcome ~ Country_IT * Diet_duration + Age,
+      data = data_analysis %>%
+        mutate(
+          Diet_duration = (Diet_duration / 10),
+          Age = (Age - 33) / 10
+        )
     )
 
-  ## save results
-  outcome[i] <- names(data_analysis)[i + n_covarites]
-  
-  ## country and Age effect
-  est_ITcountry_avg[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Country_IT"
-    ), 1
-  ]
+    ## get contrast (effects of diet BY COUNTRY)
+    contrast_emm <- summary(
+      pairs(
+        emmeans(
+          model,
+          specs = ~ Diet_duration | Country_IT,
+          at = list(Diet_duration = c(0, 1))
+        ),
+        interaction = TRUE,
+        adjust = "none"
+      ),
+      infer = c(TRUE, TRUE)
+    )
 
-  P_ITcountry_avg[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Country_IT"
-    ), 4
-  ]
-  
-  est_Age[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Age"
-    ), 1
-  ]
+    ## save results
+    outcome[i] <- names(data_analysis)[i + n_covarites]
 
-  P_Age[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Age"
-    ), 4
-  ]
-  
-  ## diet effect
-  tr <- confint(model)
-  
-  CI_L_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][1]
-  CI_U_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][2]
-  
-  est_Diet_duration_avg[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Diet_duration"
-    ), 1
-  ]
+    ## country and Age effect
+    est_ITcountry_avg[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Country_IT"
+      ), 1
+    ]
 
-  P_Diet_duration_avg[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Diet_duration"
-    ), 4
-  ]
-  
-  est_Diet_duration_inCZ[i] <- -contrast_emm[1,3]
-  P_Diet_duration_inCZ[i] <- contrast_emm$p.value[1]
-  CI_L_Diet_duration_inCZ[i] <- -contrast_emm$upper.CL[1]
-  CI_U_Diet_duration_inCZ[i] <- -contrast_emm$lower.CL[1]
-  
-  est_Diet_duration_inIT[i] <- -contrast_emm[2,3]
-  P_Diet_duration_inIT[i] <- contrast_emm$p.value[2]
-  CI_L_Diet_duration_inIT[i] <- -contrast_emm$upper.CL[2]
-  CI_U_Diet_duration_inIT[i] <- -contrast_emm$lower.CL[2]
-  
-  ## interaction
-  diet_country_int[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Country_IT:Diet_duration"
-    ), 1
-  ]
+    P_ITcountry_avg[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Country_IT"
+      ), 4
+    ]
 
-  P_diet_country_int[i] <- summary(model)$coefficients[
-    which(
-      names(model$coefficients) == "Country_IT:Diet_duration"
-    ), 4
-  ]
-}
+    est_Age[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Age"
+      ), 1
+    ]
+
+    P_Age[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Age"
+      ), 4
+    ]
+
+    ## diet effect
+    tr <- confint(model)
+
+    CI_L_Diet_duration_avg[i] <- tr[which(row.names(tr) == "Diet_duration"), ][1]
+    CI_U_Diet_duration_avg[i] <- tr[which(row.names(tr) == "Diet_duration"), ][2]
+
+    est_Diet_duration_avg[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Diet_duration"
+      ), 1
+    ]
+
+    P_Diet_duration_avg[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Diet_duration"
+      ), 4
+    ]
+
+    est_Diet_duration_inCZ[i] <- -contrast_emm[1, 3]
+    P_Diet_duration_inCZ[i] <- contrast_emm$p.value[1]
+    CI_L_Diet_duration_inCZ[i] <- -contrast_emm$upper.CL[1]
+    CI_U_Diet_duration_inCZ[i] <- -contrast_emm$lower.CL[1]
+
+    est_Diet_duration_inIT[i] <- -contrast_emm[2, 3]
+    P_Diet_duration_inIT[i] <- contrast_emm$p.value[2]
+    CI_L_Diet_duration_inIT[i] <- -contrast_emm$upper.CL[2]
+    CI_U_Diet_duration_inIT[i] <- -contrast_emm$lower.CL[2]
+
+    ## interaction
+    diet_country_int[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Country_IT:Diet_duration"
+      ), 1
+    ]
+
+    P_diet_country_int[i] <- summary(model)$coefficients[
+      which(
+        names(model$coefficients) == "Country_IT:Diet_duration"
+      ), 4
+    ]
+  }
 
   result_microbiome <- data.frame(
-  outcome,
-  est_ITcountry_avg, P_ITcountry_avg,
-  est_Age, P_Age,
-  est_Diet_duration_avg, P_Diet_duration_avg,
-  est_Diet_duration_inCZ, P_Diet_duration_inCZ,
-  est_Diet_duration_inIT, P_Diet_duration_inIT,
-  diet_country_int, P_diet_country_int,
-  CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
-  CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
-  CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
-)
-  
-  saveRDS(result_microbiome, 
-              'gitignore/lm_results/result_microbiome_SGB30_VGdur_training.Rds')
-}
-
-result_microbiome <- readRDS('gitignore/lm_results/result_microbiome_SGB30_VGdur_training.Rds')
-```
-
-
-
-### Show and save results
-
-```{r}
-kableExtra::kable(result_microbiome %>% 
-  dplyr::select(
     outcome,
     est_ITcountry_avg, P_ITcountry_avg,
     est_Age, P_Age,
@@ -1480,15 +1449,50 @@ kableExtra::kable(result_microbiome %>%
     CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
     CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
     CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
-  ) %>% arrange(P_Diet_duration_avg),
+  )
+
+  saveRDS(
+    result_microbiome,
+    "gitignore/lm_results/result_microbiome_SGB50_VGdur_training.Rds"
+  )
+}
+
+result_microbiome <- readRDS(
+  "gitignore/lm_results/result_microbiome_SGB50_VGdur_training.Rds"
+)
+```
+
+
+
+### Show and save results
+
+```{r}
+kableExtra::kable(
+  result_microbiome %>%
+    dplyr::select(
+      outcome,
+      est_ITcountry_avg, P_ITcountry_avg,
+      est_Age, P_Age,
+      est_Diet_duration_avg, P_Diet_duration_avg,
+      est_Diet_duration_inCZ, P_Diet_duration_inCZ,
+      est_Diet_duration_inIT, P_Diet_duration_inIT,
+      diet_country_int, P_diet_country_int,
+      CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+      CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+      CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+    ) %>% arrange(P_Diet_duration_avg),
   caption = "Results of linear models, modelling CLR-transformed relative abundances of taxa (inferred from shotgun metagenomic sequencing) as the outcome, with vegan status duration (`Diet_duration`), `Country`, their interaction (`Diet_duration × Country`), and `Age` as fixed-effect predictors, using training data only (Czech and Italian vegan cohorts). Only taxa with CLR-transformed relative abundances differing by diet (FDR < 0.05, average effect across both countries) were included. `est`: denotes estimated effects (regression coefficients), i.e. expected change in clr-transformed relative abundnace per 10 years of vegan diet or age, or for country (Italy vs Czechia). `P`: p-value; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. `avg` suffix: effect averaged across cohorts, whereas `inCZ` and `inIT` indicate effects in the Czech or Italian cohort, respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet duration between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model with interaction",
   escape = FALSE
 )
 
-if(file.exists('gitignore/lm_results/result_microbiome_SGB30_VGdur_training.csv') == FALSE){
-  write.table(result_microbiome, 
-              'gitignore/lm_results/result_microbiome_SGB30_VGdur_training.csv', row.names = FALSE)
-  }
+if (file.exists(
+  "gitignore/lm_results/result_microbiome_SGB50_VGdur_training.csv"
+) == FALSE) {
+  write.table(result_microbiome,
+    "gitignore/lm_results/result_microbiome_SGB50_VGdur_training.csv",
+    row.names = FALSE
+  )
+}
 ```
 
 
@@ -1504,7 +1508,7 @@ data_analysis_microbiome <- data_microbiome_valid2 %>%
     all_of(diet_sensitive_taxa)
   )
 
-summary(data_analysis_microbiome[ , 1:12])
+summary(data_analysis_microbiome[ , 1:11])
 ```
 
 #### Define number of microbiome and covariates
@@ -1520,8 +1524,11 @@ n_features <- ncol(data_analysis_microbiome) - n_covarites
 outcome <- vector('double', n_features)
 est_VGduration <- vector('double', n_features)
 P_VGduration <- vector('double', n_features)
+est_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
 CI_L_VGduration <- vector('double', n_features)
 CI_U_VGduration <- vector('double', n_features)
+
 ```
 
 #### Estimate over outcomes
@@ -1534,7 +1541,7 @@ for (i in 1:n_features) {
   ## fit model
   model <- lm(outcome ~ Diet_duration + Age, 
               data = data_analysis_microbiome %>% 
-                mutate(Diet_duration = (Diet_duration)/10,
+                mutate(Diet_duration = Diet_duration/10,
                        Age = (Age-33)/10))
 
   ## save results
@@ -1558,6 +1565,7 @@ for (i in 1:n_features) {
     ), 4
   ]
   
+    
   est_Age[i] <- summary(model)$coefficients[
     which(
       names(model$coefficients) == "Age"
@@ -1568,7 +1576,7 @@ for (i in 1:n_features) {
     which(
       names(model$coefficients) == "Age"
     ), 4
-  ]  
+  ]
 }
 ```
 
@@ -1577,18 +1585,18 @@ for (i in 1:n_features) {
 ```{r}
 result_microbiome_val <- data.frame(
   outcome,
+  est_Age, P_Age,
   est_VGduration, P_VGduration,
-  CI_L_VGduration, CI_U_VGduration,
-  est_Age, P_Age
+  CI_L_VGduration, CI_U_VGduration
 )
 
 kableExtra::kable(result_microbiome_val %>% arrange(P_VGduration),
-  caption = "Results of linear models estimating the effect of vegan diet status duration on CLR-transformed relative abundances of taxa (inferred from shotgun metagenomic sequencing) as the outcome. Only taxa with significant differences between vegans and omnivores in training cohorts (FDR < 0.05, average effect over both countries) were included. `est`: regression coefficient, i.e. expected change in CLR-transformed relative abundance per +10 years of vegan diet duration and age, respectively. `P`: p-value; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. All estimates in a single row are based on a single model"
+  caption = "Results of linear models estimating the effect of vegan diet duration on CLR-transformed relative abundances of taxa (inferred from shotgun metagenomic sequencing) as the outcome. Only taxa with significant differences between vegans and omnivores in training cohorts (FDR < 0.05, average effect over both countries) were included. `est`: regression coefficient, i.e. expected change in CLR-transformed relative abundance per +10 years of vegan diet duration and age, respectively. `P`: p-value; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. All estimates in a single row are based on a single model"
 )
 
-if (file.exists("gitignore/lm_results/result_microbiom_validation_SGB30_VGdur_valid.csv") == FALSE) {
+if (file.exists("gitignore/lm_results/result_microbiom_SGB50_VGdur_valid.csv") == FALSE) {
   write.table(result_microbiome_val,
-    "gitignore/lm_results/result_microbiom_validation_SGB30_VGdur_valid.csv",
+    "gitignore/lm_results/result_microbiom_SGB50_VGdur_valid.csv",
     row.names = FALSE
   )
 }
@@ -1643,11 +1651,11 @@ data_forest <- data.frame(
 
 #### Plotting
 
-```{r, fig.height=13, fig.width=9}
-#| fig.cap: "Forest plot shows the effect of duration of vegan diet (within the vegan sub-population) on CLR-transformed relative abundance of selected taxa (inferred from shotgun metagenomic sequencing), with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in CLR-transformed relative abundance per +10 years of vegan diet duration within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher relative abundances in long-term vegans compared to short-term vegans. Only taxa with significant differences between vegans and omnivores in training cohorts (average effect over the two countries) were included. Estimates for the training cohorts come from a single linear model with predictors `Diet_duration`, `Country`, their interaction (`Diet_duration x Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive taxa are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences."
+```{r, fig.height=5, fig.width=8}
+#| fig.cap: "Forest plot shows the effect of duration of vegan diet (within the vegan sub-population) on CLR-transformed relative abundance of selected taxa (inferred from shotgun metagenomic sequencing), with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in CLR-transformed relative abundance per +10 years of vegan diet duration within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher relative abundances in long-term vegans compared to short-term vegans. Only taxa with significant differences between vegans and omnivores in training cohorts (average effect over the two countries) were included. Estimates for the training cohorts come from a single linear model with predictors `Diet_duration`, `Country`, their interaction (`Diet_duration x Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive taxa are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences"
 
 
-plotac <- "forest_plot_microbiome_SGB30_VGduration"
+plotac <- "forest_plot_microbiome_SGB50_VGduration"
 path <- "gitignore/figures"
 
 colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
@@ -1690,8 +1698,8 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
     path = paste0(path),
     filename = plotac,
     device = "svg",
-    width = 9,
-    height = 13
+    width = 8,
+    height = 5
   )
 }
 

@@ -127,8 +127,10 @@ length(paths)
 ### Italian data
 
 ```{r}
-data_path_originalIT <- read.delim('gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv',  
-                                   header = TRUE, sep = "\t") %>% 
+data_path_originalIT <- read.delim(
+  'gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv',  
+  header = TRUE, sep = "\t"
+  ) %>% 
   filter(X..Pathway %in% paths)
 
 features <- data_path_originalIT[,1]
@@ -152,8 +154,10 @@ originalIT_features <- data_path_originalIT%>%
 ### Czech data
 
 ```{r}
-data_path_originalCZ <- read.delim('gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv',  
-                                   header = TRUE, sep = "\t") %>% 
+data_path_originalCZ <- read.delim(
+  'gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv',  
+  header = TRUE, sep = "\t"
+  ) %>% 
   filter(X..Pathway %in% paths)
 
 features <- data_path_originalCZ[,1]
@@ -680,12 +684,12 @@ result_pathways <- result_pathways %>%
 
 ```{r}
 kableExtra::kable(result_pathways %>%  filter(fdr_VGdiet_avg < 0.05),
-                  caption = "Result of linear models, modelling CLR-transformed proportion of given pathway with `Diet`, `Country` and `Diet:Country` interaction as predictors. Only the pathways that differ between vegans and omnivores (FDR < 0.05, average diet effect over both countries) are shown. `est` prefix: implies estimated effects (regression coefficient), i.e. how much clr-transformed pathway differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+                  caption = "Result of linear models, modelling CLR-transformed relative level of given fcuntional pathway with `Diet`, `Country` and `Diet x Country` interaction as fixed-effect predictors. Only the pathways that differ between vegans and omnivores in training cohorts (FDR < 0.05, average diet effect over both countries) are shown. `est` prefix: denotes estimated effects (regression coefficient), i.e. how much clr-transformed relative pathway level differ in vegans compared to omnivores, and in Italian vs Czech cohort, respectively; `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value) All estimates in a single row are based on a single model"
                   ) 
 
-if(file.exists('gitignore/result_pathways_filt.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_pathways_filt.csv') == FALSE){
   write.table(result_pathways, 
-              'gitignore/result_pathways_filt.csv', 
+              'gitignore/lm_results/result_pathways_filt.csv', 
               row.names = FALSE)
   }
 ```
@@ -694,7 +698,7 @@ if(file.exists('gitignore/result_pathways_filt.csv') == FALSE){
 
 To assess the predictive power of pathways features on diet strategy, we employed Elastic Net logistic regression. 
 
-As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to by 2 standard deviations.
+As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4).
 
 The performance of the predictive models was evaluated through their capacity of discriminate between vegan and omnivore diets, using out-of-sample area under ROC curve (AUC; estimated with out-of-bag bootstrap) as the measure of discriminatory capacity.
 
@@ -1124,11 +1128,11 @@ val_res <- cbind(pathway = tr, result_pathways_val) %>%
   arrange(desc(est_VGdiet))
 
 kableExtra::kable(val_res,
-                  caption = 'Results of linear models estimating the effect of diet on pathway levels. `est` represents the estimated effects (regression coefficient), indicating how much the clr-transformed pathway levels differ between vegans and omnivores. `P`: p-value, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively.') 
+                  caption = 'Results of linear models estimating the effect of diet on the CLR-transformed proportion of a given functional pathway as the outcome. Only pathways whose proportion significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `est` represents the estimated effects (regression coefficient), indicating how much the CLR-transformed proportions differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model') 
 
-if(file.exists('gitignore/result_pathways_validation_filt.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_pathways_validation_filt.csv') == FALSE){
   write.table(val_res,
-              'gitignore/result_pathways_validation_filt.csv', 
+              'gitignore/lm_results/result_pathways_validation_filt.csv', 
               row.names = FALSE)
   }
 ```
@@ -1179,9 +1183,12 @@ validation_order <- data_forest %>%
     val_res %>% select(outcome, pathway),
     by = 'outcome'
   ) %>% 
-  filter(dataset == "Validation") %>%
-  arrange(beta) %>%
+group_by(outcome) %>%
+  summarise(beta_mean = mean(beta), .groups = "drop",
+            pathway  = first(pathway)) %>%
+  arrange(beta_mean) %>%
   pull(pathway)
+
 
 up_winners <- data_forest %>% 
   pivot_wider(names_from = dataset,
@@ -1223,7 +1230,7 @@ winners <- as.character(c(up_winners$outcome, down_winners$outcome))
 #### Plotting
 
 ```{r, fig.height=12, fig.width=10}
-#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the CLR-transformed proportion of selected metabolic pathways, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in CLR-transformed taxon proportions between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher pathway level in vegans compared to omnivores. Only pathways that showed significant differences between vegan and omnivorous diets (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Patways validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
+#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the CLR-transformed relative level of selected metabolic pathways, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in CLR-transformed pathway proportions between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher relative pathway level in vegans compared to omnivores. Only pathways that showed significant differences between vegan and omnivorous diets (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Patways validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
 
 plotac <- "forest_pathway"
 path <- "gitignore/figures"
@@ -1336,7 +1343,1521 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 get(plotac)
 ```
 
+# Linear model VG duration 
 
+Next, we fit another series of linear models, this time modelling clr-transformed functional pathways (inferred from shotgun metagenomic sequencing) using the following fixed-effect predictors: duration of vegan status (`Diet_duration`, scaled in tens of years), `Country`, their interaction (`Diet_duration × Country`), and `Age`:
+
+$$
+\text{CLR(pathway proportion)} = \alpha + \beta_{1} \times \text{Country} + \beta_{2} \times \text{Diet duration} + \beta_{3} \times (\text{Country}:\text{Diet duration}) + \beta_{4} \times \text{Age} + \epsilon
+$$
+
+This analysis includes only vegan participants, while omnivores are excluded. The aim was to test whether functional pathways that differ between vegans and omnivores also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive pathways compared to those who adopted the diet more recently.
+
+Because longer vegan duration is likely correlated with age (e.g. a 20-year-old cannot have 20 years of vegan history, unlike a 40- or 60-year-old), we also adjusted for age in the models.
+
+## Get data
+
+### Training
+
+```{r}
+meta_trainIT <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 1)
+meta_trainCZ <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 2) %>% 
+  dplyr::mutate(ID = paste0('T', ID),
+                Sex = SEX) %>% 
+  dplyr::select(-SEX)
+
+meta_trainIT[1:5,]
+meta_trainCZ[1:5,]
+data_meta_original <- bind_rows(meta_trainIT, meta_trainCZ) %>% 
+  rename(`Sample` = `ID`)
+  
+data_meta_original[1:5,]
+
+data_pathways_original2 <- data_pathways_original_clr %>% 
+  rename(`Sample` = `ID`) %>% 
+  left_join(data_meta_original, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:Sex, everything())
+
+data_pathways_original2 %>% dim()
+
+data_pathways_original2[
+  1:4, 
+  (ncol(data_pathways_original2)-10):ncol(data_pathways_original2)
+  ]
+
+data_pathways_original2[1:4, 1:10]
+
+```
+
+### Validation
+
+```{r}
+data_meta_valid <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 3) %>% 
+  rename(`Sample` = `ID`)
+
+data_pathways_valid2 <- data_pathways_validation_clr %>% 
+  rename(`Sample` = `ID`) %>% 
+  left_join(data_meta_valid, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:SEX, everything())
+
+data_pathways_valid2 %>% dim()
+
+data_pathways_valid2[
+  1:4, 
+  (ncol(data_pathways_valid2)-10):ncol(data_pathways_valid2)
+  ]
+
+data_pathways_valid2[1:4, 1:10]
+
+data_pathways_valid2 %>% select(Sample, Diet, GRP)
+
+data_pathways_valid2 %>% select(Sample, Diet, GRP, Diet_duration) %>% 
+  filter(
+    (Diet == 'VEGAN' & GRP == 'OM') | (Diet == 'OMNI' & GRP == 'VN')
+  )
+```
+
+
+## Training cohort
+
+### Select data 
+
+```{r}
+data_analysis <- data_pathways_original2 %>%
+    mutate(Country_IT = as.numeric(
+      dplyr::if_else(
+        Country == "IT", 0.5, -0.5
+      )
+    )
+  ) %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>% 
+  select(1:8, Country_IT, all_of(diet_sensitive_pathways$outcome))
+
+summary(data_analysis[ , 1:12])
+data_analysis[1:10, 1:12]
+```
+
+
+### Define number of pathways and covariates
+
+```{r}
+n_covarites <- 9
+n_features <- ncol(data_analysis) - n_covarites
+```
+
+### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+
+est_Diet_duration_inCZ <- vector('double', n_features)
+est_Diet_duration_inIT <- vector('double', n_features)
+est_Diet_duration_avg <- vector('double', n_features)
+
+est_ITcountry_avg <- vector('double', n_features)
+
+diet_country_int <- vector('double', n_features)
+
+P_Diet_duration_inCZ <- vector('double', n_features)
+P_Diet_duration_inIT <- vector('double', n_features)
+P_Diet_duration_avg <- vector('double', n_features)
+
+P_ITcountry_avg <- vector('double', n_features)
+
+est_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+
+
+P_diet_country_int <- vector('double', n_features)
+
+CI_L_Diet_duration_inCZ <- vector('double', n_features)
+CI_L_Diet_duration_inIT <- vector('double', n_features)
+CI_L_Diet_duration_avg <- vector('double', n_features)
+
+CI_U_Diet_duration_inCZ <- vector('double', n_features)
+CI_U_Diet_duration_inIT <- vector('double', n_features)
+CI_U_Diet_duration_avg <- vector('double', n_features)
+```
+
+### Estimate over outcomes
+
+```{r}
+if(file.exists('gitignore/lm_results/result_pathways_SGB30_VGdur_training.Rds') == FALSE){
+for (i in 1:n_features) {
+  
+  ## define variable
+  data_analysis$outcome <- data_analysis[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Country_IT * Diet_duration + Age, 
+              data = data_analysis %>% 
+                mutate(Diet_duration = (Diet_duration/10),
+                       Age = (Age-33)/10))
+
+  ## get contrast (effects of diet BY COUNTRY)
+  contrast_emm <- summary(
+    pairs(
+      emmeans(
+        model,
+        specs = ~ Diet_duration | Country_IT,
+        at = list(Diet_duration = c(0, 1)) 
+        ),
+      interaction = TRUE,
+      adjust = "none"
+      ),
+    infer = c(TRUE, TRUE)
+    )
+
+  ## save results
+  outcome[i] <- names(data_analysis)[i + n_covarites]
+  
+  ## country and age effect
+  est_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 1
+  ]
+  
+  est_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+  
+  
+  ## diet effect
+  tr <- confint(model)
+  
+  CI_L_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][1]
+  CI_U_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][2]
+  
+  est_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+  
+  est_Diet_duration_inCZ[i] <- -contrast_emm[1,3]
+  P_Diet_duration_inCZ[i] <- contrast_emm$p.value[1]
+  CI_L_Diet_duration_inCZ[i] <- -contrast_emm$upper.CL[1]
+  CI_U_Diet_duration_inCZ[i] <- -contrast_emm$lower.CL[1]
+  
+  est_Diet_duration_inIT[i] <- -contrast_emm[2,3]
+  P_Diet_duration_inIT[i] <- contrast_emm$p.value[2]
+  CI_L_Diet_duration_inIT[i] <- -contrast_emm$upper.CL[2]
+  CI_U_Diet_duration_inIT[i] <- -contrast_emm$lower.CL[2]
+  
+  ## interaction
+  diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 1
+  ]
+
+  P_diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 4
+  ]
+}
+
+  result_pathways <- data.frame(
+  outcome,
+  est_ITcountry_avg, P_ITcountry_avg,
+  est_Age, P_Age,
+  est_Diet_duration_avg, P_Diet_duration_avg,
+  est_Diet_duration_inCZ, P_Diet_duration_inCZ,
+  est_Diet_duration_inIT, P_Diet_duration_inIT,
+  diet_country_int, P_diet_country_int,
+  CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+  CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+  CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+)
+  
+  saveRDS(result_pathways, 
+              'gitignore/lm_results/result_pathways_SGB30_VGdur_training.Rds')
+}
+
+result_pathways <- readRDS('gitignore/lm_results/result_pathways_SGB30_VGdur_training.Rds')
+```
+
+
+
+### Show and save results
+
+```{r}
+kableExtra::kable(result_pathways %>% 
+  dplyr::select(
+    outcome,
+    est_ITcountry_avg, P_ITcountry_avg,
+    est_Age, P_Age,
+    est_Diet_duration_avg, P_Diet_duration_avg,
+    est_Diet_duration_inCZ, P_Diet_duration_inCZ,
+    est_Diet_duration_inIT, P_Diet_duration_inIT,
+    diet_country_int, P_diet_country_int,
+    CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+    CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+    CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+    ) %>% 
+    arrange(P_Diet_duration_avg),
+  caption = "Results of linear models, modelling clr-transformed pathways (functional pathways inferred from shotgun metagenomic sequencing, expressed as relative proportions) with vegan status duration (`Diet_duration`), `Country`, their interaction (`Diet_duration × Country`), and `Age` as predictors, using training data only (Czech and Italian vegan cohorts). Only pathways with clr-transformed levels differing by diet (FDR < 0.05, average effect across both countries) are shown. `est` prefix: denotes estimated effects (regression coefficients), i.e. expected change in clr-transforemd pathway proportion per 10 years of vegan diet or age, or for country (Italy vs Czech Republic). `P`: p-value. `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. `avg` suffix: effect averaged across cohorts, whereas `inCZ` and `inIT` indicate effects in the Czech or Italian cohort, respectively. All estimates in a single row are based on a single model with interaction",
+  escape = FALSE
+)
+
+if(file.exists('gitignore/lm_results/result_pathways_VGdur_training.csv') == FALSE){
+  write.table(result_pathways, 
+              'gitignore/lm_results/result_pathways_VGdur_training.csv', row.names = FALSE)
+  }
+```
+
+
+## Validation cohort
+
+```{r}
+data_analysis_pathways <- data_pathways_valid2 %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>%
+  dplyr::mutate(Diet_duration = as.numeric(as.character(Diet_duration))) %>% 
+  dplyr::select(
+    Diet_duration, Age,
+    all_of(diet_sensitive_pathways$outcome)
+  )
+
+summary(data_analysis_pathways[ , 1:12])
+```
+
+#### Define number of pathways and covariates
+
+```{r}
+n_covarites <- 2
+n_features <- ncol(data_analysis_pathways) - n_covarites
+```
+
+#### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+est_VGduration <- vector('double', n_features)
+P_VGduration <- vector('double', n_features)
+est_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+CI_L_VGduration <- vector('double', n_features)
+CI_U_VGduration <- vector('double', n_features)
+```
+
+#### Estimate over outcomes
+
+```{r}
+for (i in 1:n_features) {
+  ## define variable
+  data_analysis_pathways$outcome <- data_analysis_pathways[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Diet_duration + Age, 
+              data = data_analysis_pathways %>% 
+                mutate(Diet_duration = (Diet_duration)/10,
+                       Age = (Age-33)/10))
+
+  ## save results
+  outcome[i] <- names(data_analysis_pathways)[i + n_covarites]
+
+  ## diet effect
+  tr <- confint(model)
+
+  CI_L_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][1]
+  CI_U_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][2]
+
+  est_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+  
+  est_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+}
+```
+
+#### Results table
+
+```{r}
+result_pathways_val <- data.frame(
+  outcome,
+  est_VGduration, P_VGduration,
+  CI_L_VGduration, CI_U_VGduration,
+  est_Age, P_Age
+)
+
+kableExtra::kable(result_pathways_val %>% 
+    arrange(P_VGduration),
+caption = "Results of linear models estimating the effect of vegan diet status duration and age on clr-transformed pathway proportions (functional pathways inferred from shotgun metagenomic sequencing). Only pathways with significant differences between vegans and omnivores in training cohorts (FDR < 0.05, average effect over both countries) were included. `est`: regression coefficient, i.e. expected change in clr-transformed pathway proportion per +10 years of vegan diet and +10 years of age respectively. `P`: p-value; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval. All estimates in a single row are based on a single model"
+)
+
+if (file.exists("gitignore/result_pathways_VGdur_valid.csv") == FALSE) {
+  write.table(result_pathways_val,
+    "gitignore/result_pathways_VGdur_valid.csv",
+    row.names = FALSE
+  )
+}
+```
+
+## Forest plot
+
+### Prepare data
+
+```{r}
+
+## subset result tables
+result_pathways_subset <- result_pathways %>%
+  filter(outcome %in% diet_sensitive_pathways$outcome)
+
+result_pathways_val_subset <- result_pathways_val %>%
+  filter(outcome %in% diet_sensitive_pathways$outcome)
+
+## create a data frame
+data_forest <- data.frame(
+  outcome = rep(diet_sensitive_pathways$outcome, 3),
+  beta = c(
+    result_pathways_subset$est_Diet_duration_inCZ,
+    result_pathways_subset$est_Diet_duration_inIT,
+    result_pathways_val_subset$est_VGduration
+  ),
+  lower = c(
+    result_pathways_subset$CI_L_Diet_duration_inCZ,
+    result_pathways_subset$CI_L_Diet_duration_inIT,
+    result_pathways_val_subset$CI_L_VGduration
+  ),
+  upper = c(
+    result_pathways_subset$CI_U_Diet_duration_inCZ,
+    result_pathways_subset$CI_U_Diet_duration_inIT,
+    result_pathways_val_subset$CI_U_VGduration
+  ),
+  dataset = c(
+    rep("CZ", len),
+    rep("IT", len),
+    rep("Validation", len)
+  )
+)
+
+
+ data_forest <- data_forest %>%
+  mutate(in_winner = if_else(outcome %in% winners, TRUE, FALSE, missing = FALSE)) %>%
+   left_join(
+     val_res %>% select(outcome, pathway), 
+     by = 'outcome') %>%
+  left_join(
+    elacoef %>% mutate(outcome = pathway) %>% select(-pathway), 
+    by = 'outcome') %>% 
+   mutate(outcome = factor(pathway, levels = validation_order))
+```
+
+#### Plotting
+
+```{r, fig.height=13, fig.width=9}
+#| fig.cap: "Forest plot shows the effect of vegan status duration (within the vegan sub-population, scale of tens years) on clr-transformed relative level of selected functional pathways (inferred from shotgun metagenomic sequencing), with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in clr-transformed relative pathway level per +10 years of vegan diet within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher relative pathway level in long-term vegans compared to short-term vegans. Only pathways with significant differences between vegans and omnivores (average effect over the two countries) were included. Estimates for the training cohorts come from a single linear model with `Diet_duration`, `Country`, their interaction (`Diet_duration:Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive pathways are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences"
+
+
+plotac <- "forest_plot_pathways_VGduration"
+path <- "gitignore/figures"
+
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+assign(plotac, ggplot(
+  data_forest, aes(x = outcome, y = beta, ymin = lower, ymax = upper, color = dataset)
+) +
+  geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+  geom_hline(yintercept = 0, color = "black") +
+  geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+  scale_color_manual(values = colors) +
+  labs(
+    y = "Effect of vegan diet duration (+10y) on CLR(relative level)",
+    x = "Outcome",
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  scale_x_discrete(
+    labels = setNames(
+      ifelse(data_forest$in_winner, 
+             paste0("**", data_forest$outcome, "**"), 
+             as.character(data_forest$outcome)
+      ), data_forest$outcome
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = ggtext::element_markdown(size = 10),  
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 9,
+    height = 13
+  )
+}
+
+```
+
+# Summary info about Patways
+
+## Proportions of unmapped and unintegrated
+
+### Czech trainng cohort
+
+```{r}
+StratfiedPaths_originalCZ <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway))
+
+dim(StratfiedPaths_originalCZ)
+
+all_paths <- colSums(StratfiedPaths_originalCZ[, -1])
+
+unmapped <- StratfiedPaths_originalCZ[1, -1] / all_paths
+unintegrated <- StratfiedPaths_originalCZ[2, -1] / all_paths
+classified <- 1 - unintegrated - unmapped
+
+
+kableExtra::kable(
+  dplyr::bind_rows(
+    quantile(as.numeric(unmapped), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(unintegrated), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(classified), probs = c(0, 0.25, 0.5, 0.75, 1))
+  ) %>%
+    dplyr::mutate(
+      category = c("unmapped", "unintegrated", "classified")
+    ) %>%
+    dplyr::select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, and maximum) of the proportions of unmapped, unintegrated, and classified pathway reads across samples from the Czech training cohort. 'Unmapped': reads not aligned to UniRef90. 'Unintegrated': reads aligned to UniRef90 gene families but not assigned to any MetaCyc pathway. 'Classified': reads assigned to known MetaCyc pathways (unstratified community-level abundances)"
+)
+```
+
+### Italian training cohort
+
+```{r}
+StratifiedPaths_originalIT <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway))
+
+dim(StratifiedPaths_originalIT)
+
+all_paths <- colSums(StratifiedPaths_originalIT[, -1])
+
+unmapped <- StratifiedPaths_originalIT[1, -1] / all_paths
+unintegrated <- StratifiedPaths_originalIT[2, -1] / all_paths
+classified <- 1 - unintegrated - unmapped
+
+
+kableExtra::kable(
+  dplyr::bind_rows(
+    quantile(as.numeric(unmapped), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(unintegrated), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(classified), probs = c(0, 0.25, 0.5, 0.75, 1))
+  ) %>%
+    dplyr::mutate(
+      category = c("unmapped", "unintegrated", "classified")
+    ) %>%
+    dplyr::select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, and maximum) of the proportions of unmapped, unintegrated, and classified pathway reads across samples from the Italian training cohort. 'Unmapped': reads not aligned to UniRef90. 'Unintegrated': reads aligned to UniRef90 gene families but not assigned to any MetaCyc pathway. 'Classified': reads assigned to known MetaCyc pathways (unstratified community-level abundances)"
+)
+```
+
+### Czech validation cohort
+
+```{r}
+StratifiedPaths_validation <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_Validation_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway))
+
+dim(StratifiedPaths_validation)
+
+all_paths <- colSums(StratifiedPaths_validation[, -1])
+
+unmapped <- StratifiedPaths_validation[1, -1] / all_paths
+unintegrated <- StratifiedPaths_validation[2, -1] / all_paths
+classified <- 1 - unintegrated - unmapped
+
+
+kableExtra::kable(
+  dplyr::bind_rows(
+    quantile(as.numeric(unmapped), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(unintegrated), probs = c(0, 0.25, 0.5, 0.75, 1)),
+    quantile(as.numeric(classified), probs = c(0, 0.25, 0.5, 0.75, 1))
+  ) %>%
+    dplyr::mutate(
+      category = c("unmapped", "unintegrated", "classified")
+    ) %>%
+    dplyr::select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, and maximum) of the proportions of unmapped, unintegrated, and classified pathway reads across samples from the Czech validation cohort. 'Unmapped': reads not aligned to UniRef90. 'Unintegrated': reads aligned to UniRef90 gene families but not assigned to any MetaCyc pathway. 'Classified': reads assigned to known MetaCyc pathways (unstratified community-level abundances)"
+)
+
+data_path_validation <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_Validation_humann.tsv",
+  header = TRUE, sep = "\t"
+) %>%
+  filter(!grepl("\\|", X..Pathway)) %>%
+  select(X..Pathway)
+dim(data_path_validation)
+```
+
+## Taxon-assigned vs. taxon-unassigned pathways
+
+This refers to the proportion of reads that were functionally assigned to a MetaCyc pathway but whose taxonomic origin could not be determined, from the all classified reads. 
+
+### Czech trainng cohort
+
+```{r}
+Paths_originalCZ <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_CZ_humann.tsv",
+  header = TRUE, sep = "\t", check.names = FALSE
+) %>%
+  filter(
+    !grepl("UNMAPPED", `# Pathway`),
+    !grepl("UNINTEGRATED", `# Pathway`)
+  )
+
+name_col <- names(Paths_originalCZ)[1]
+
+unstrat <- Paths_originalCZ %>% filter(!grepl("\\|", `# Pathway`))
+dim(unstrat)
+unstrat[1:10, 1:3]
+
+strat <- Paths_originalCZ %>% filter(grepl("\\|", `# Pathway`))
+stratCZ <- strat
+
+dim(strat)
+strat[1:10, 1:3]
+
+strat_unclassified <- strat %>%
+  filter(grepl("\\|unclassified", `# Pathway`))
+dim(strat_unclassified)
+strat_unclassified[1:10, 1:3]
+
+quants <- quantile(
+  colSums(strat_unclassified[, -1]) / colSums(unstrat[, -1]),
+  probs = c(0, 0.25, 0.5, 0.75, 1)
+)
+
+quants_df <- as.data.frame(t(quants))
+names(quants_df) <- c("0%", "25%", "50%", "75%", "100%")
+quants_df$category <- "unclassified_within_taxon-assigned"
+
+kableExtra::kable(
+  quants_df %>% select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, maximum) of the proportion of pathway signal that was taxonomically un-assigned, relative to all classified pathways (Czech training cohort). 'Unclassified pathways': MetaCyc pathway abundances that HUMAnN could not attribute to specific taxa (rows labeled '|unclassified' in the stratified output)"
+)
+```
+
+
+### Italian trainng cohort
+
+```{r}
+Paths_originalIT <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_IT_humann.tsv",
+  header = TRUE, sep = "\t", check.names = FALSE
+) %>%
+  filter(
+    !grepl("UNMAPPED", `# Pathway`),
+    !grepl("UNINTEGRATED", `# Pathway`)
+  )
+
+name_col <- names(Paths_originalCZ)[1]
+
+unstrat <- Paths_originalIT %>% filter(!grepl("\\|", `# Pathway`))
+dim(unstrat)
+unstrat[1:10, 1:3]
+
+strat <- Paths_originalIT %>% filter(grepl("\\|", `# Pathway`))
+stratIT <- strat
+
+dim(strat)
+strat[1:10, 1:3]
+
+strat_unclassified <- strat %>%
+  filter(grepl("\\|unclassified", `# Pathway`))
+dim(strat_unclassified)
+strat_unclassified[1:10, 1:3]
+
+quants <- quantile(
+  colSums(strat_unclassified[, -1]) / colSums(unstrat[, -1]),
+  probs = c(0, 0.25, 0.5, 0.75, 1)
+)
+
+quants_df <- as.data.frame(t(quants))
+names(quants_df) <- c("0%", "25%", "50%", "75%", "100%")
+quants_df$category <- "unclassified_within_taxon-assigned"
+
+kableExtra::kable(
+  quants_df %>% select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, maximum) of the proportion of pathway signal that was taxonomically un-assigned, relative to all classified pathways (Italian training cohort). 'Unclassified pathways': MetaCyc pathway abundances that HUMAnN could not attribute to specific taxa (rows labeled '|unclassified' in the stratified output)"
+)
+```
+
+### Validation cohort
+
+```{r}
+Paths_validation <- read.delim(
+  "gitignore/data/pathw/Pathway_abundance_MetaCyc_Validation_humann.tsv",
+  header = TRUE, sep = "\t", check.names = FALSE
+) %>%
+  filter(
+    !grepl("UNMAPPED", `# Pathway`),
+    !grepl("UNINTEGRATED", `# Pathway`)
+  )
+
+unstrat <- Paths_validation %>% filter(!grepl("\\|", `# Pathway`))
+dim(unstrat)
+unstrat[1:10, 1:3]
+
+strat <- Paths_validation %>% filter(grepl("\\|", `# Pathway`))
+
+stratVAL <- strat
+
+dim(strat)
+strat[1:10, 1:3]
+
+strat_unclassified <- strat %>%
+  filter(grepl("\\|unclassified", `# Pathway`))
+dim(strat_unclassified)
+strat_unclassified[1:10, 1:3]
+
+quants <- quantile(
+  colSums(strat_unclassified[, -1]) / colSums(unstrat[, -1]),
+  probs = c(0, 0.25, 0.5, 0.75, 1)
+)
+
+quants_df <- as.data.frame(t(quants))
+names(quants_df) <- c("0%", "25%", "50%", "75%", "100%")
+quants_df$category <- "unclassified_within_taxon-assigned"
+
+kableExtra::kable(
+  quants_df %>% select(category, everything()),
+  caption = "Summary statistics (minimum, 25th, 50th, 75th, maximum) of the proportion of pathway signal that was taxonomically un-assigned, relative to all classified pathways (Czech validation cohort). 'Unclassified pathways': MetaCyc pathway abundances that HUMAnN could not attribute to specific taxa (rows labeled '|unclassified' in the stratified output)"
+)
+```
+
+
+## Taxa contribution to diet-sensitive pathways
+
+### PWY-5367: petroselinate biosynthesis
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+### NONOXIPENT-PWY: pentose phosphate pathway (non-oxidative branch) I
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("NONOXIPENT-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `NONOXIPENT-PWY: pentose phosphate pathway (non-oxidative branch) I` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("NONOXIPENT-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `NONOXIPENT-PWY: pentose phosphate pathway (non-oxidative branch) I` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("NONOXIPENT-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `NONOXIPENT-PWY: pentose phosphate pathway (non-oxidative branch) I` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+### TRPSYN-PWY: L-tryptophan biosynthesis
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("TRPSYN-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `TRPSYN-PWY: L-tryptophan biosynthesis` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("TRPSYN-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `TRPSYN-PWY: L-tryptophan biosynthesis` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("TRPSYN-PWY", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `TRPSYN-PWY: L-tryptophan biosynthesis` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+### PWY-8178: pentose phosphate pathway (non-oxidative branch) II
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-8178", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-8178: pentose phosphate pathway (non-oxidative branch) II` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-8178", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-8178: pentose phosphate pathway (non-oxidative branch) II` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-8178", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-8178: pentose phosphate pathway (non-oxidative branch) II` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+### PWY-801: homocysteine and cysteine interconversion
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-801", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-801: homocysteine and cysteine interconversion` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-801", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-801: homocysteine and cysteine interconversion` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-801", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-801: homocysteine and cysteine interconversion` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+### PWY-6293: superpathway of L-cysteine biosynthesis (fungi)
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-6293", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6293: superpathway of L-cysteine biosynthesis (fungi)` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-6293", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6293: superpathway of L-cysteine biosynthesis (fungi)` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-6293", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6293: superpathway of L-cysteine biosynthesis (fungi)` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+### PWY-6284: superpathway of unsaturated fatty acids biosynthesis (E. coli)
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-6284", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6284: superpathway of unsaturated fatty acids biosynthesis (E. coli)` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-6284", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6284: superpathway of unsaturated fatty acids biosynthesis (E. coli)` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-6284", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-6284: superpathway of unsaturated fatty acids biosynthesis (E. coli)` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+### PWY-5367: petroselinate biosynthesis
+
+#### Czech training cohort
+
+```{r}
+
+res <- stratCZ %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Czech training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Italian training cohort
+
+```{r}
+
+res <- stratIT %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Italian training cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
+
+
+#### Czech validation cohort
+
+```{r}
+
+res <- stratVAL %>%
+  filter(grepl("PWY-5367", `# Pathway`)) %>%
+  mutate(`# Pathway` = sub(".*\\|", "", `# Pathway`)) %>%
+  {
+    mat <- select(., -`# Pathway`)
+    mat_prop <- sweep(mat, 2, colSums(mat), "/")
+    quants <- t(apply(mat_prop, 1, function(row) {
+      quantile(row, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    }))
+    cbind(`# Pathway` = .$`# Pathway`, quants)
+  } %>%
+  as.data.frame()
+
+colnames(res)[-1] <- c("0%", "25%", "50%", "75%", "100%")
+
+res[, -1] <- lapply(res[, -1], as.numeric)
+
+kableExtra::kable(
+  res %>%
+    arrange(desc(`50%`), desc(`75%`), desc(`100%`)) %>%
+    filter(`100%` > 0) %>%
+    head(10) %>%
+    mutate(across(-`# Pathway`, ~ round(., 4))),
+  caption = "Top 10 taxa contributing to pathway `PWY-5367: petroselinate biosynthesis` in the Czech validation cohort. Values represent the distribution (0th, 25th, 50th, 75th, 100th percentiles) of each taxon’s proportional contribution to the total pathway abundance across samples. The row 'unclassified' indicates the fraction of the pathway abundance that HUMAnN could not assign to specific taxa"
+)
+```
 
 # Reproducibility
 

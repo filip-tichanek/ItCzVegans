@@ -442,7 +442,6 @@ result_metabolom <- result_metabolom %>%
   dplyr::mutate(
     fdr_ITcountry_avg = p.adjust(P_ITcountry_avg, method = 'BH'),
     fdr_VGdiet_avg = p.adjust(P_VGdiet_avg, method = 'BH'),
-    
     fdr_VGdiet_inCZ = p.adjust(P_VGdiet_inCZ, method = 'BH'),
     fdr_VGdiet_inIT = p.adjust(P_VGdiet_inIT, method = 'BH'),
     fdr_diet_country_int = p.adjust(P_diet_country_int, method = 'BH')
@@ -464,12 +463,12 @@ result_metabolom <- result_metabolom %>%
 
 ```{r}
 kableExtra::kable(result_metabolom,
-                  caption = "Result of linear models, modelling the level of given metabolite with `Diet`, `Country` and `Diet:Country` interaction as predictors. `log2FD` prefix: implies estimated effects (regression coefficient), i.e. how much log2-transformed metabolite level differ in vegans compared to omnivores, `P`: p-value, `fdr`: p-value after adjustment for multiple comparison, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` shows effect in Czech or Italian cohort respectively. All estimates in a single row are based on a single model"
+                  caption = "Results of linear models, modeling the log2-transformed level of a given metabolite with `Diet`, `Country`, and `Diet:Country` interaction as fixed-effect predictors. Only metabolites with significantly different levels between diet groups are shown (FDR < 0.05, average effect across both countries). `log2FD` prefix: denotes estimated effects (regression coefficients), i.e., how much log2-transformed metabolite levels differ in vegans compared to omnivores, and between Italian and Czech cohorts, respectively; `P`: p-value; `fdr`: p-value after adjustment for multiple comparisons; `CI_L` and `CI_U`: lower and upper bounds of the 95% confidence interval, respectively. `avg` suffix denotes effects averaged across subgroups, whereas `inCZ` and `inIT` denote effects in the Czech or Italian cohort, respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of a vegan diet between Italian and Czech cohorts; positive values indicate a stronger effect in the Italian, negative values a stronger effect in the Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model."
                   ) 
 
-if(file.exists('gitignore/result_metabolom.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_metabolom.csv') == FALSE){
   write.table(result_metabolom, 
-              'gitignore/result_metabolom.csv', 
+              'gitignore/lm_results/result_metabolom.csv', 
               row.names = FALSE)
   }
 ```
@@ -478,7 +477,7 @@ if(file.exists('gitignore/result_metabolom.csv') == FALSE){
 
 To assess the predictive power of metabolome features on diet strategy, we employed Elastic Net logistic regression. 
 
-As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). All features were standardized to by 2 standard deviations.
+As we expected very high level of co-linearity, we allowed $alpha$ to rather small (0, 0.2 or 0.4). 
 
 The performance of the predictive models was evaluated through their capacity of discriminate between vegan and omnivore diets, using out-of-sample area under ROC curve (AUC; estimated with out-of-bag bootstrap) as the measure of discriminatory capacity.
 
@@ -907,11 +906,11 @@ result_metabolom_val <- data.frame(
   filter(outcome %in% diet_sensitive_metabolites$outcome)
 
 kableExtra::kable(result_metabolom_val,
-                  caption = 'Results of linear models estimating the effect of diet on metabolite levels. Only metabolites that significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `log2FD` represents the estimated effects (regression coefficient), indicating how much the log2-transformed metabolite levels differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model.') 
+                  caption = 'Results of linear models estimating the effect of diet on metabolite levels. Only metabolites that significantly differed between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `log2FD` denotes the estimated effects (regression coefficient), indicating how much the log2-transformed metabolite levels differ between vegans and omnivores. `P`: p-value, `fdr`: p-value adjusted for multiple comparisons, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model') 
 
-if(file.exists('gitignore/result_metabolom_validation.csv') == FALSE){
+if(file.exists('gitignore/lm_results/result_metabolom_validation.csv') == FALSE){
   write.table(result_metabolom_val,
-              'gitignore/result_metabolom_validation.csv', 
+              'gitignore/lm_results/result_metabolom_validation.csv', 
               row.names = FALSE)
   }
 ```
@@ -955,8 +954,9 @@ data_forest <- data.frame(
 )
 
 validation_order <- data_forest %>%
-  filter(dataset == "Validation") %>%
-  arrange(beta) %>%
+  group_by(outcome) %>%
+  summarise(beta_mean = mean(beta), .groups = "drop") %>%
+  arrange(beta_mean) %>%
   pull(outcome)
 
 up_winners <- data_forest %>% 
@@ -992,7 +992,7 @@ winners <- as.character(c(up_winners$outcome, down_winners$outcome))
 #### Plotting
 
 ```{r, fig.height=8, fig.width=6}
-#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the levels of selected log2-transformed metabolites, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in log2-transformed metabolite levels between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher metabolite level in vegans compared to omnivores. Only metabolites that showed significant differences between vegan and omnivorous diets (as an average effect across both training cohorts) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet:Country` as predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Metabolites validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
+#| fig.cap: "The forest plot illustrates the effects of a vegan diet on the levels of selected log2-transformed metabolites, along with their 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech cohort (validation). Green, blue, and grey points/lines represent differences in log2-transformed metabolite levels between vegans and omnivores within the Italian cohort, Czech cohort, and Czech validation cohort, respectively. Positive values suggest a higher metabolite level in vegans compared to omnivores. Only metabolites that showed significant differences between vegan and omnivorous diets in training cohorts (FDR < 0.05, average effect across both countries) were selected, and these effects were further validated in the independent cohort. The estimates for the training cohorts were obtained from a single linear model that included `Diet`, `Country`, and the interaction term `Diet x Country` as fixed-effect predictors. In the independent Czech validation cohort, `Diet` was the only fixed-effect predictor. Metabolites validated in the linear model and showing predictive power in the elastic net model (|β| > 0.1) are **bold**"
   
 colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
 
@@ -1009,7 +1009,7 @@ assign(
   geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
   scale_color_manual(values = colors) +
   labs(
-    y = "Effect of vegan diet on log2-trasformed metabolite level",
+    y = "Effect of vegan duration (+10y) on log2 lipid level",
     x = "Outcome",
     color = "Dataset"
   ) +
@@ -1103,6 +1103,502 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
   )
 }
 ```
+
+
+# Linear model VG duration 
+
+Next, we fit another series of linear models, this time modelling log2 metabolite levels using the following fixed-effect predictors: duration of vegan status (`Diet_duration`, scaled in tens of years), `country`, their interaction (`Diet_duration × country`), and `age`:
+
+$$
+\log_{2}(\text{metabolite level}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet duration} + \beta_{3} \times (\text{country}:\text{diet duration}) + \epsilon
+$$
+
+This analysis includes only vegan participants, while omnivores are excluded. The goal was to examine whether metabolites that differ between vegans and non-vegans also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive metabolites compared to those who adopted the diet more recently.
+
+Because longer vegan duration is likely correlated with age (e.g. a 20-year-old cannot have 20 years of vegan history, unlike a 40-year-old), we also adjusted for age in the models.
+
+## Get data
+
+### Training
+
+```{r}
+meta_trainIT <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 1)
+meta_trainCZ <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 2) %>% 
+  dplyr::mutate(ID = paste0('T', ID),
+                Sex = SEX) %>% 
+  dplyr::select(-SEX)
+
+meta_trainIT[1:5,]
+meta_trainCZ[1:5,]
+data_meta_original <- bind_rows(meta_trainIT, meta_trainCZ) %>% 
+  rename(`Sample` = `ID`)
+  
+data_meta_original[1:5,]
+
+data_metabolite_original2 <- data_metabolites_original %>% 
+  left_join(data_meta_original, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:Sex, everything())
+
+data_metabolite_original2 %>% dim()
+
+data_metabolite_original2[
+  1:4, 
+  (ncol(data_metabolite_original2)-10):ncol(data_metabolite_original2)
+  ]
+
+data_metabolite_original2[1:4, 1:10]
+
+```
+
+### Validation
+
+```{r}
+data_meta_valid <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 3) %>% 
+  rename(`Sample` = `ID`)
+
+data_metabolite_valid2 <- data_metabolites_validation %>% 
+  mutate(Diet =  if_else(SKUPINA == 1, 'VEGAN', 'OMNI')) %>% 
+  rename(`Sample` = `CisloPacienta`) %>% 
+  select(Sample, Diet, everything()) %>% 
+  select(-c(NazevSouboru:SKUPINA)) %>% 
+  mutate(Sample = paste0('K', as.numeric(Sample))) %>% 
+  left_join(data_meta_valid, by = 'Sample') %>% 
+  select(Sample:Diet, COHORT:SEX, dplyr::everything())
+
+data_metabolite_valid2 %>% dim()
+
+data_metabolite_valid2[
+  1:4, 
+  (ncol(data_metabolite_valid2)-10):ncol(data_metabolite_valid2)
+  ]
+
+data_metabolite_valid2[1:4, 1:10]
+
+data_metabolite_valid2 %>% select(Sample, Diet, GRP)
+
+data_metabolite_valid2 %>% select(Sample, Diet, GRP, Diet_duration) %>% 
+  filter(
+    (Diet == 'VEGAN' & GRP == 'OM') | (Diet == 'OMNI' & GRP == 'VN')
+  )
+```
+
+
+## Training cohort
+
+### Select data 
+
+```{r}
+data_analysis <- data_metabolite_original2 %>%
+    mutate(Country_IT = as.numeric(
+      dplyr::if_else(
+        Country == "IT", 0.5, -0.5
+      )
+    )
+  ) %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>% 
+  select(Sample:Group, Country_IT, all_of(diet_sensitive_metabolites$outcome))
+
+summary(data_analysis[ , 1:11])
+```
+
+### Define number of metabolite and covariates
+
+```{r}
+n_covarites <- 10
+n_features <- ncol(data_analysis) - n_covarites
+```
+
+### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+
+logFD_Diet_duration_inCZ <- vector('double', n_features)
+logFD_Diet_duration_inIT <- vector('double', n_features)
+logFD_Diet_duration_avg <- vector('double', n_features)
+
+logFD_ITcountry_avg <- vector('double', n_features)
+diet_country_int <- vector('double', n_features)
+
+logFD_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+
+P_Diet_duration_inCZ <- vector('double', n_features)
+P_Diet_duration_inIT <- vector('double', n_features)
+P_Diet_duration_avg <- vector('double', n_features)
+
+P_ITcountry_avg <- vector('double', n_features)
+P_diet_country_int <- vector('double', n_features)
+
+CI_L_Diet_duration_inCZ <- vector('double', n_features)
+CI_L_Diet_duration_inIT <- vector('double', n_features)
+CI_L_Diet_duration_avg <- vector('double', n_features)
+
+CI_U_Diet_duration_inCZ <- vector('double', n_features)
+CI_U_Diet_duration_inIT <- vector('double', n_features)
+CI_U_Diet_duration_avg <- vector('double', n_features)
+```
+
+### Estimate over outcomes
+
+```{r}
+if(file.exists('gitignore/lm_results/result_metabolite_VGdur_training.Rds') == FALSE){
+for (i in 1:n_features) {
+  
+  ## define variable
+  data_analysis$outcome <- data_analysis[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Country_IT * Diet_duration + Age, 
+              data = data_analysis %>% 
+                mutate(Diet_duration = (Diet_duration/10),
+                       outcome = trans_metabolite(outcome),
+                       Age = (Age-33)/10))
+
+  ## get contrast (effects of diet BY COUNTRY)
+  contrast_emm <- summary(
+    pairs(
+      emmeans(
+        model,
+        specs = ~ Diet_duration | Country_IT,
+        at = list(Diet_duration = c(0, 1)) 
+        ),
+      interaction = TRUE,
+      adjust = "none"
+      ),
+    infer = c(TRUE, TRUE)
+    )
+
+  ## save results
+  outcome[i] <- names(data_analysis)[i + n_covarites]
+  
+  ## country and Age effect
+  logFD_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 1
+  ]
+
+  P_ITcountry_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT"
+    ), 4
+  ]
+  
+    logFD_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+  
+  ## diet effect
+  tr <- confint(model)
+  
+  CI_L_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][1]
+  CI_U_Diet_duration_avg[i] <- tr[which(row.names(tr) == 'Diet_duration'),][2]
+  
+  logFD_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_Diet_duration_avg[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+  
+  logFD_Diet_duration_inCZ[i] <- -contrast_emm[1,3]
+  P_Diet_duration_inCZ[i] <- contrast_emm$p.value[1]
+  CI_L_Diet_duration_inCZ[i] <- -contrast_emm$upper.CL[1]
+  CI_U_Diet_duration_inCZ[i] <- -contrast_emm$lower.CL[1]
+  
+  logFD_Diet_duration_inIT[i] <- -contrast_emm[2,3]
+  P_Diet_duration_inIT[i] <- contrast_emm$p.value[2]
+  CI_L_Diet_duration_inIT[i] <- -contrast_emm$upper.CL[2]
+  CI_U_Diet_duration_inIT[i] <- -contrast_emm$lower.CL[2]
+  
+  ## interaction
+  diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 1
+  ]
+
+  P_diet_country_int[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Country_IT:Diet_duration"
+    ), 4
+  ]
+}
+
+  result_metabolite <- data.frame(
+  outcome,
+  logFD_ITcountry_avg, P_ITcountry_avg,
+  logFD_Age, P_Age,  
+  logFD_Diet_duration_avg, P_Diet_duration_avg,
+  logFD_Diet_duration_inCZ, P_Diet_duration_inCZ,
+  logFD_Diet_duration_inIT, P_Diet_duration_inIT,
+  diet_country_int, P_diet_country_int,
+  CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+  CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+  CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+)
+  
+  saveRDS(result_metabolite, 
+              'gitignore/lm_results/result_metabolite_VGdur_training.Rds')
+}
+
+result_metabolite <- readRDS('gitignore/lm_results/result_metabolite_VGdur_training.Rds')
+```
+
+
+
+### Show and save results
+
+```{r}
+kableExtra::kable(result_metabolite %>% 
+  dplyr::select(
+    outcome,
+    logFD_ITcountry_avg, P_ITcountry_avg,
+    logFD_Diet_duration_avg, P_Diet_duration_avg,
+    logFD_Diet_duration_inCZ, P_Diet_duration_inCZ,
+    logFD_Diet_duration_inIT, P_Diet_duration_inIT,
+    diet_country_int, P_diet_country_int,
+    CI_L_Diet_duration_avg, CI_U_Diet_duration_avg,
+    CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
+    CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
+  ) %>% arrange(P_Diet_duration_avg),
+  caption = "Result of linear models, modelling the log2-transformed level of given metabolite with vegan status duration (`Diet_duration'), `Country`, their interaction (`Diet_duration x Country`) and `Age` as predictors, using training data only (both Czech and Italian cohorts). Only metabolites whose log2-transformed levels differ between diet in training cohorts (FDR < 0.05, average diet effet across both countries) are shown. `logFD` prefix: denotes estimated effects (regression coefficient), i.e. expected change in log2 metabolite level per 10 years of vegan diet or age, or for country (Italy vs Czechia). `P`: p-value, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` show effect in Czech or Italian cohort respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet duration between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model with interaction",
+  escape = FALSE
+)
+
+if(file.exists('gitignore/lm_results/result_metabolite_VGdur_training.csv') == FALSE){
+  write.table(result_metabolite, 
+              'gitignore/lm_results/result_metabolite_VGdur_training.csv', row.names = FALSE)
+  }
+```
+
+
+## Validation cohort
+
+```{r}
+data_analysis_metabolite <- data_metabolite_valid2 %>%
+  filter(Diet == 'VEGAN',
+         !is.na(Diet_duration)) %>%
+  dplyr::mutate(Diet_duration = as.numeric(as.character(Diet_duration))) %>% 
+  dplyr::select(
+    Diet_duration, Age,
+    all_of(diet_sensitive_metabolites$outcome)
+  )
+
+summary(data_analysis_metabolite[ , 1:11])
+```
+
+#### Define number of metabolite and covariates
+
+```{r}
+n_covarites <- 2
+n_features <- ncol(data_analysis_metabolite) - n_covarites
+```
+
+#### Create empty objects
+
+```{r}
+outcome <- vector('double', n_features)
+logFD_VGduration <- vector('double', n_features)
+P_VGduration <- vector('double', n_features)
+logFD_Age <- vector('double', n_features)
+P_Age <- vector('double', n_features)
+CI_L_VGduration <- vector('double', n_features)
+CI_U_VGduration <- vector('double', n_features)
+```
+
+#### Estimate over outcomes
+
+```{r}
+for (i in 1:n_features) {
+  ## define variable
+  data_analysis_metabolite$outcome <- data_analysis_metabolite[, (i + n_covarites)]
+
+  ## fit model
+  model <- lm(outcome ~ Diet_duration + Age, 
+              data = data_analysis_metabolite %>% 
+                mutate(Diet_duration = (Diet_duration)/10,
+                       outcome = trans_metabolite(outcome),
+                       Age = (Age-33)/10))
+
+  ## save results
+  outcome[i] <- names(data_analysis_metabolite)[i + n_covarites]
+
+  ## diet effect
+  tr <- confint(model)
+
+  CI_L_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][1]
+  CI_U_VGduration[i] <- tr[which(row.names(tr) == "Diet_duration"), ][2]
+
+  logFD_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 1
+  ]
+
+  P_VGduration[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Diet_duration"
+    ), 4
+  ]
+
+    logFD_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 1
+  ]
+
+  P_Age[i] <- summary(model)$coefficients[
+    which(
+      names(model$coefficients) == "Age"
+    ), 4
+  ]
+  
+}
+```
+
+#### Results table
+
+```{r}
+result_metabolite_val <- data.frame(
+  outcome,
+  logFD_VGduration, P_VGduration,
+  CI_L_VGduration, CI_U_VGduration,
+  logFD_Age, P_Age
+)
+
+kableExtra::kable(result_metabolite_val %>% arrange(P_VGduration),
+  caption = "Results of linear models estimating the effect of vegan diet status duration and age on log2-trasformed metabolite levels. Only metabolites metabolites with significantly different levels between diet groups in training cohorts (FDR < 0.05, average effect across both training cohorts) were included. `logFD` denotes estimated effects (regression coefficient), i.e. expected change in log2 metabolite level per +10 years of vegan diet and age, respectively. `P`: p-value, and `CI_L` and `CI_U` represent the lower and upper bounds of the 95% confidence interval, respectively. All estimates in a single row are based on a single model"
+)
+
+if (file.exists("gitignore/lm_results/result_metabolite_VGdur_valid.csv") == FALSE) {
+  write.table(result_metabolite_val,
+    "gitignore/lm_results/result_metabolite_VGdur_valid.csv",
+    row.names = FALSE
+  )
+}
+```
+
+## Forest plot
+
+### Prepare data
+
+```{r}
+
+## subset result tables
+result_metabolite_subset <- result_metabolite %>%
+  filter(outcome %in% diet_sensitive_metabolites$outcome)
+
+result_metabolite_val_subset <- result_metabolite_val %>%
+  filter(outcome %in% diet_sensitive_metabolites$outcome)
+
+## create a data frame
+data_forest <- data.frame(
+  outcome = rep(diet_sensitive_metabolites$outcome, 3),
+  beta = c(
+    result_metabolite_subset$logFD_Diet_duration_inCZ,
+    result_metabolite_subset$logFD_Diet_duration_inIT,
+    result_metabolite_val_subset$logFD_VGduration
+  ),
+  lower = c(
+    result_metabolite_subset$CI_L_Diet_duration_inCZ,
+    result_metabolite_subset$CI_L_Diet_duration_inIT,
+    result_metabolite_val_subset$CI_L_VGduration
+  ),
+  upper = c(
+    result_metabolite_subset$CI_U_Diet_duration_inCZ,
+    result_metabolite_subset$CI_U_Diet_duration_inIT,
+    result_metabolite_val_subset$CI_U_VGduration
+  ),
+  dataset = c(
+    rep("CZ", len),
+    rep("IT", len),
+    rep("Validation", len)
+  )
+)
+
+
+ data_forest <- data_forest %>%
+  mutate(in_winner = if_else(outcome %in% winners, TRUE, FALSE, missing = FALSE)) %>%
+  left_join(
+    elacoef %>% mutate(outcome = metabolite) %>% select(-metabolite), 
+    by = 'outcome') %>% 
+   mutate(outcome = factor(outcome, levels = validation_order))
+```
+
+#### Plotting
+
+```{r, fig.height=5, fig.width=8}
+#| fig.cap: "Forest plot shows the effect of vegan status duration (within the vegan sub-population) on log2-transformed levels of selected metabolites, with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in log2 metabolite level per +10 years of vegan diet within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher metabolite levels in long-term vegans compared to short-term vegans. Only metabolites with significant differences between vegans and omnivores in training cohorts (average effect over the two countries) were included. Estimates for the training cohorts come from a single linear model with `Diet_duration`, `Country`, their interaction (`Diet_duration x Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive metabolites are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences"
+
+
+plotac <- "forest_plot_metabolite_VGduration"
+path <- "gitignore/figures"
+
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+assign(plotac, ggplot(
+  data_forest, aes(x = outcome, y = beta, ymin = lower, ymax = upper, color = dataset)
+) +
+  geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+  geom_hline(yintercept = 0, color = "black") +
+  geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+  scale_color_manual(values = colors) +
+  labs(
+    y = "Effect of vegan duration (+10y) on log2 metabolite level",
+    x = "Outcome",
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  scale_x_discrete(
+    labels = setNames(
+      ifelse(data_forest$in_winner, 
+             paste0("**", data_forest$outcome, "**"), 
+             as.character(data_forest$outcome)
+      ), data_forest$outcome
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = ggtext::element_markdown(size = 10),  
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 9,
+    height = 13
+  )
+}
+
+```
+
+
+
 # Reproducibility
 
 ```{r}

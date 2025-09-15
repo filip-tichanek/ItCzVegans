@@ -1,0 +1,132 @@
+---
+title: "Vegan-specific signature implies healthier metabolic profile: findings from diet-related multi-omics observational study based on different European populations"
+subtitle: "Statistical report - statistical methodology in details"
+format: 
+  html:  
+    embed-resources: true
+    keep-md: false
+    toc: true
+    toc-expand: 3
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    number-depth: 4
+    code-fold: show
+    code-tools: true
+    code-summary: "Open code"
+    grid: 
+      body-width: 1000px
+      sidebar-width: 600px
+      margin-width: 100px
+editor: source
+project:
+  type: default
+  output-dir: output
+theme: darkly
+highlight-style: github-dark
+fontsize: 12 px
+code-block-bg: '#2D2D31'
+fontcolor: '#D1D1D1'
+monobackgroundcolor: '#3B3B3B'
+bibliography: references.bib
+---
+
+------------------------------------------------------------------------
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+```{css, echo=FALSE}
+code.sourceCode {
+  font-size: 0.85em;
+  border: 1px solid #ffffff; /* White border */
+  padding: 20px; /* Add padding for better visibility */
+}
+
+code{
+    color: #EEE8AA; /* Change the color value as needed */
+}
+
+.equation {
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+body {
+  text-align: justify;
+}
+
+```
+
+{{< include README.md >}}
+
+## Statistical Methods in details
+
+All statistical analyses were performed using R, version 4.4.1 (2024-06-14) [@Rcomp]. Data visualizations were done with the `ggplot2` package [@ggplot2].
+
+### Linear model per feature
+
+For each dataset in the training cohorts, we fitted a feature-specific linear model where the transformed feature (metabolite \[log2\], lipid \[log2\], microbiome \[CLR\] and pathways \[CLR\]) represented the outcome variable whereas `country` (Italy vs Czech), `diet` (vegan vs omnivore), and their interaction (`country:diet`) all represented fixed-effects predictors. So, each model has following form
+
+$$
+g(\text{outcome}) = \alpha + \beta_{1} \times \text{country} + \beta_{2} \times \text{diet} + \beta_{3} \times \text{country:diet} + \epsilon
+$$
+
+with $g$ representing the transformation applied: $log_{2}$ for metabolomic and lipidomic data, and center-log-ratio (CLR) for microbiome and pathways data (both compositional). For compositional datasets, zeros were assumed to be false zeros and were estimated with the *Log-Ratio Singular Value Decomposition* using `lrSVD` function in 'zCompositions' package [@zCompositions] since this method was shown efficient for replacing zeros even in sparse compositional dataset [@palarea-albaladejo2022].
+
+The variables were coded as follows: $diet = -0.5$ for omnivores and $diet = 0.5$ for vegans; $country = -0.5$ for the Czech cohort and $country = 0.5$ for the Italian cohort.\
+This parameterization allowed us to interpret the linear model summary as presenting the average conditional effects of `diet` across both countries and the average conditional effects of `country` across both diet groups. We then used the `emmeans` package [@emmeans-2] to obtain specific estimates for the effect of `diet` in the Italian and Czech cohorts separately, still from a single model.
+
+Features that showed a significant diet effect (average effect of `diet` across both countries, adjusted for multiple comparisons with FDR \< 0.05) were then visualized using a forest plot. The plot displayed the estimated difference in the level of given feature between vegan and omnivorous subject, and 95% confidence intervals across all three cohorts (Czech and Italian training cohorts, as well as the Czech external validation cohort) separately to evaluate whether found associations of given feature with diet can be generalized to other datasets.
+
+### Linear model for the effect of vegan diet duration
+
+Next, we fit another series of linear models, this time modelling omics profiles using the following fixed-effect predictors: duration of vegan status (`Diet_duration`, scaled in tens of years), `Country`, their interaction (`Diet_duration × Country`), and `Age`:
+
+$$
+\text{CLR(pathway proportion)} = \alpha + \beta_{1} \times \text{Country} + \beta_{2} \times \text{Diet duration} + \beta_{3} \times (\text{Country}:\text{Diet duration}) + \beta_{4} \times \text{Age} + \epsilon
+$$
+
+This analysis includes only vegan participants, while omnivores are excluded. The aim was to test whether omics features differ between vegans and omnivores also vary within the vegan group itself, depending on how long participants have been vegan. In other words, we asked whether long-term vegans show stronger up- or down-regulation of diet-sensitive features compared to those who adopted the diet more recently. Because longer vegan duration correlates with the vegan diet duration, we also adjusted for age in the models.
+
+### Diet prediction
+
+To explore whether omics profiles contain a consistent signal differentiating dietary groups, we applied elastic net logistic regression to each dataset (metabolome, lipidome, microbiome, pathways) using the `glmnet` R package [@glmnet], combined with a [custom validation function](https://github.com/filip-tichanek/ItCzVegans/blob/main/R/functions/clust_glmnet.R) for internal validation using bootstrap. Separate models were fitted for each dataset (lipidome, metabolome, microbiome, pathways).
+
+Due to the expected high collinearity among features, we limited the search for the mixing parameter $alpha$ to rather smaller values (0, 0.2, 0.4). All features were standardized to have $mean = 0$ and $standard deviation = 0.5$ using the `arm` R package [@arm] to ensure scale comparability.
+
+Models were first evaluated for out-of-sample performance using an out-of-bag bootstrap approach (500 iterations). Predictive performance was quantified using the out-of-sample area under the ROC curve (AUC; internal validation), estimated via the `pROC` package [@pROC]. AUC was estimated for both cohorts combined and for each country separately.  Final external validation was performed on an independent Czech cohort (external validation).
+
+The modelling and validation procedure involved the following steps:
+
+*Training and internal validation*
+
+1. For each alpha (0, 0.2, 0.4), the `cv.glmnet` function was used to perform 10-fold cross-validation on the training data, using the default `glmnet` lambda sequence. For each alpha, we selected `lambda.1se`, corresponding to the most regularized model whose cross-validated deviance was within one standard error of the minimum. The alpha–lambda pair with the lowest deviance was chosen.
+
+2. The final model was fitted on the full training set using `glmnet` with the selected alpha and lambda values.
+
+3. To estimate internal performance, the entire modelling procedure (including tuning) was repeated 500 times on bootstrap resamples of the training data. For each resample, the optimal alpha and lambda were re-selected.
+
+4. The model was trained on each bootstrap resample, and AUC was calculated on the out-of-bag subjects (i.e., those not included in that iteration's training set). This yielded 500 out-of-sample AUC estimates.
+
+5. The median, 2.5th, and 97.5th percentiles of the AUCs were reported to summarize internal out-of-sample performance and its 95% confidence interval.
+
+*External validation*
+
+6. External validation cohort data were standardized using the means and standard deviations of the training cohort to ensure consistent scaling.
+
+7. The final model (fitted once on the full training data) was applied to the external validation cohort to generate predicted probabilities of vegan status.
+
+8. For each subject in the external cohort, the final model returned a *predicted probability of being vegan* (a continuous score between 0 and 1).  
+
+9. This predicted probability was treated as the discrimination variable: by varying the threshold across its full range, we obtained sensitivity and specificity pairs from which the ROC curve and its AUC were computed. This AUC reflects the model's ability to generalize to an independent cohort.
+
+The models were not intended for practical prediction, but to quantify the strength of the signal separating the dietary groups, with its uncertainty, by using all features of a given dataset jointly. It also offered a complementary perspective on which features are most clearly associated with diet
+
+# Reproducibility
+
+```{r, collapse=TRUE}
+sessionInfo()
+```
