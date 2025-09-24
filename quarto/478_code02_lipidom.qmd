@@ -135,6 +135,8 @@ data_lipids_validation[
 data_lipids_validation %>% summary()
 data_lipids_validation[1:5, ]
 names(data_lipids_validation)
+
+dim(data_lipids_validation %>% filter(!is.na(`ACar 16:0`)))
 ```
 
 ### Merge training and validation dataset
@@ -1972,6 +1974,8 @@ if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {
 
 ## Lipids changing with vegan diet duration
 
+### Table
+
 ```{r}
 kableExtra::kable(
   result_lipid %>%
@@ -1995,9 +1999,20 @@ kableExtra::kable(
     ),
   caption = 'Lipids associated with the duration of a vegan diet in the training (Czech and Italian) and validation cohorts. Columns show p-values for the effect of vegan diet duration in training (`train`, average effect across both training cohorts) and validation data (`val`), together with log2 fold changes per +10 years of vegan diet within the Czech, Italian, and validation cohorts. Only lipids with significant associations with diet (FDR < 0.05) were included in the analyses, and only those with a significant association with vegan diet duration in training cohorts (p-value for the average effect across both countries < 0.05) are shown')
 
+lipids_vegdur_sensitive <- result_lipid %>%
+    filter(P_Diet_duration_avg < 0.05) %>%
+    select(
+      outcome, P_Diet_duration_avg,
+      logFD_Diet_duration_inCZ, logFD_Diet_duration_inIT
+    ) %>%
+    left_join(result_lipid_val, by = "outcome") %>%
+    select(
+      outcome, P_Diet_duration_avg, P_VGduration,
+      logFD_Diet_duration_inCZ, logFD_Diet_duration_inIT, logFD_VGduration
+    ) %>%
+    arrange(P_VGduration) %>% 
+    select(outcome) %>% pull()
 ```
-
-
 
 $\Rightarrow$ Some lipids, especially a few strongly related to an omnivorous diet, appear to be negatively associated with the duration on a vegan diet. The lower tail of the lipids (those on the bottom of the forest plot, i.e., those with the strongest negative association with the vegan diet) tends to be negatively associated with the duration of the vegan diet in vegans. 
 
@@ -2006,6 +2021,66 @@ Specifically:
 `SM 43:1;O2` and `SM 33:1;O2`: Significant `Diet duration` effect (averaged over both countries), consistent and also statistically significant in the validation cohort. and also statistically significant in the validation cohort.
 
 `TG 16:0_18:1_22:6`, `PC 37:6`, `PC 14:0_17:0`, `SM 43:2;O2 (2)`, `PC 33:1`, `PC 15:0_20:3` and `SM 36:0;O2`: Significant `Diet duration` effect (averaged over both countries), consistent but not statistically significant in the validation cohort.
+
+### Figure
+
+#### Plotting
+
+```{r, fig.height=5, fig.width=7}
+#| fig.cap: "Forest plot shows the effect of vegan status duration (within the vegan sub-population) on log2-transformed levels of selected lipids, with 95% confidence intervals, across two training cohorts (Czech and Italian) and one independent Czech validation cohort. Green, blue, and grey points/lines represent the expected change in log2 lipid level per +10 years of vegan diet within the Italian, Czech, and Czech validation cohorts, respectively. Positive values indicate higher lipid levels in long-term vegans compared to short-term vegans. **Only lipids which showed statsitically significant association with vegan diet duration** (average effect over the two countries) are included. Estimates for the training cohorts come from a single linear model with `Diet_duration`, `Country`, their interaction (`Diet_duration x Country`), and `Age` as fixed-effect predictors. `Age` was included as it correlates with `Diet_duration` and could act as a confounder. In the Czech validation cohort, `Diet_duration` and `Age` were fixed-effect predictors. Diet-sensitive lipids are shown in **bold**, in the same order as in the forest plot of vegan–omnivore differences"
+
+
+plotac <- "forest_plot_lipid_VGduration_selected"
+path <- "gitignore/figures"
+
+colors <- c("CZ" = "#150999", "IT" = "#329243", "Validation" = "grey60")
+
+assign(plotac, ggplot(
+  data_forest %>% filter(outcome %in% lipids_vegdur_sensitive), 
+  aes(x = outcome, y = beta, ymin = lower, ymax = upper, color = dataset)
+) +
+  geom_pointrange(position = position_dodge(width = 0.5), size = 0.5) +
+  geom_hline(yintercept = 0, color = "black") +
+  geom_errorbar(position = position_dodge(width = 0.5), width = 0.2) +
+  scale_color_manual(values = colors) +
+  labs(
+    y = "Effect of vegan duration (+10y) on log2 lipid level",
+    x = "Outcome",
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  coord_flip() + 
+  scale_x_discrete(
+    labels = setNames(
+      ifelse(data_forest$in_winner, 
+             paste0("**", data_forest$outcome, "**"), 
+             as.character(data_forest$outcome)
+      ), data_forest$outcome
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = ggtext::element_markdown(size = 10),  
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "bottom"
+  )
+)
+
+get(plotac)
+
+if (file.exists(paste0(path, "/", plotac, ".svg")) == FALSE) {  
+  ggsave(
+    path = paste0(path),
+    filename = plotac,
+    device = "svg",
+    width = 7,
+    height = 5
+  )
+}
+
+```
+
 
 ## Age vs vegan diet duration
 

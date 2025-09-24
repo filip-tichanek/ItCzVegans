@@ -1135,6 +1135,13 @@ data_meta_original <- bind_rows(meta_trainIT, meta_trainCZ) %>%
   
 data_meta_original[1:5,]
 
+gtsummary::tbl_summary(
+  data_meta_original %>% 
+    mutate(Category = paste0(COHORT, GRP)) %>% 
+    select(Sex, Category),
+  by = 'Category'
+)
+
 data_metabolite_original2 <- data_metabolites_original %>% 
   left_join(data_meta_original, by = 'Sample') %>% 
   select(Sample:Diet, COHORT:Sex, everything())
@@ -1156,6 +1163,14 @@ data_metabolite_original2[1:4, 1:10]
 data_meta_valid <- read.xlsx('gitignore/data/diet_duration_age.xlsx', sheet = 3) %>% 
   rename(`Sample` = `ID`)
 
+gtsummary::tbl_summary(
+  data_meta_valid %>% 
+    mutate(Category = GRP) %>% 
+    select(SEX, Category),
+  by = 'Category'
+)
+
+
 data_metabolite_valid2 <- data_metabolites_validation %>% 
   mutate(Diet =  if_else(SKUPINA == 1, 'VEGAN', 'OMNI')) %>% 
   rename(`Sample` = `CisloPacienta`) %>% 
@@ -1164,6 +1179,18 @@ data_metabolite_valid2 <- data_metabolites_validation %>%
   mutate(Sample = paste0('K', as.numeric(Sample))) %>% 
   left_join(data_meta_valid, by = 'Sample') %>% 
   select(Sample:Diet, COHORT:SEX, dplyr::everything())
+
+pats_val1 <- data_metabolites_validation %>% 
+  mutate(Diet =  if_else(SKUPINA == 1, 'VEGAN', 'OMNI')) %>% 
+  rename(`Sample` = `CisloPacienta`) %>% 
+  select(Sample, Diet) %>% 
+  mutate(Sample = paste0('K', as.numeric(Sample))) %>% 
+  select(Sample) %>% pull
+
+pats_val2 <- data_meta_valid$Sample
+
+union(setdiff(pats_val1, pats_val2),
+                 setdiff(pats_val2, pats_val1))
 
 data_metabolite_valid2 %>% dim()
 
