@@ -1404,13 +1404,14 @@ kableExtra::kable(result_metabolite %>%
     CI_L_Diet_duration_inCZ, CI_U_Diet_duration_inCZ,
     CI_L_Diet_duration_inIT, CI_U_Diet_duration_inIT
   ) %>% arrange(P_Diet_duration_avg),
-  caption = "Result of linear models, modelling the log2-transformed level of given metabolite with vegan status duration (`Diet_duration'), `Country`, their interaction (`Diet_duration x Country`) and `Age` as predictors, using training data only (both Czech and Italian cohorts). Only metabolites whose log2-transformed levels differ between diet in training cohorts (FDR < 0.05, average diet effet across both countries) are shown. `logFD` prefix: denotes estimated effects (regression coefficient), i.e. expected change in log2 metabolite level per 10 years of vegan diet or age, or for country (Italy vs Czechia). `P`: p-value, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` show effect in Czech or Italian cohort respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet duration between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model with interaction",
+  caption = "Result of linear models, modelling the log2-transformed level of given metabolite with vegan status duration (`Diet_duration`), `Country`, their interaction (`Diet_duration x Country`) and `Age` as predictors, using training data only (both Czech and Italian cohorts). Only metabolites whose log2-transformed levels differ between diet in training cohorts (FDR < 0.05, average diet effet across both countries) are shown. `logFD` prefix: denotes estimated effects (regression coefficient), i.e. expected change in log2 metabolite level per 10 years of vegan diet or age, or for country (Italy vs Czechia). `P`: p-value, `CI_L` and `CI_U`: lower and upper bounds of 95% confidence interval respectively. `avg` suffix shows effect averaged across subgroups, whereas `inCZ` and `inIT` show effect in Czech or Italian cohort respectively. Interaction effects are reported as `diet_country_int` (difference in the effect of vegan diet duration between Italian and Czech cohorts; positive values indicate a stronger effect in Italian, negative values a stronger effect in Czech cohort) and `P_diet_country_int` (its p-value). All estimates in a single row are based on a single model with interaction",
   escape = FALSE
 )
 
 if(file.exists('gitignore/lm_results/result_metabolite_VGdur_training.csv') == FALSE){
   write.table(result_metabolite, 
-              'gitignore/lm_results/result_metabolite_VGdur_training.csv', row.names = FALSE)
+              'gitignore/lm_results/result_metabolite_VGdur_training.csv',
+              row.names = FALSE)
   }
 ```
 
